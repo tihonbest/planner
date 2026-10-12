@@ -193,6 +193,7 @@
     .wrap > section:nth-of-type(1) { grid-column:1; grid-row:5; }
     .wrap > section:nth-of-type(2) { grid-column:2; grid-row:5 / span 2; }
     .wrap > section:nth-of-type(3) { grid-column:1; grid-row:6; }
+    .wrap > section:nth-of-type(4) { grid-column:1 / -1; grid-row:7; }
     .donut { width:clamp(240px, 24vw, 320px); }
   }
   /* Если окно достаточно высокое, диаграмма остаётся на виду при прокрутке списка */
@@ -243,6 +244,20 @@
   :root[data-accent="graphite"] { --accent:#3a3a3c; --accent-hover:#2c2c2e; --on-accent:#fff; --b1:142,142,147; --b2:99,99,102; --b3:174,174,178; --glow-rgb:58,58,60; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="graphite"] { --accent:#aeaeb2; --accent-hover:#c7c7cc; --on-accent:#111113; } }
   :root[data-theme="dark"][data-accent="graphite"] { --accent:#aeaeb2; --accent-hover:#c7c7cc; --on-accent:#111113; }
+  /* ===== Обзор недели ===== */
+  .week-bars { display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin:8px 0 4px; }
+  .wbar { display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0 4px; border:0; border-radius:14px; background:transparent; color:var(--text); font:inherit; cursor:pointer; }
+  .wbar.sel { background:var(--fill); }
+  .wbar .wval { font-size:.8rem; font-weight:700; }
+  .wbar .wtrack { display:flex; align-items:flex-end; width:100%; height:96px; justify-content:center; }
+  .wbar .wfill { display:block; width:62%; max-width:34px; border-radius:8px; }
+  .wbar .wfill.good { background:var(--good); } .wbar .wfill.warn { background:var(--warn); } .wbar .wfill.bad { background:var(--bad); }
+  .wbar .wfill.none { height:3px !important; background:var(--line); }
+  .wbar .wname { font-size:.8rem; color:var(--muted); }
+  .wbar.today .wname { color:var(--accent); font-weight:700; }
+  .week-line { margin:12px 0 0; font-size:.92rem; }
+  .meta b.good { color:var(--good); } .meta b.warn { color:var(--warn); } .meta b.bad { color:var(--bad); }
+
   /* ===== Кнопка и окно настроек ===== */
   .topline { display:flex; justify-content:flex-end; align-items:stretch; gap:10px; margin:0 0 12px; }
   .topline .weather { flex:1; margin:0; min-width:0; }
@@ -381,6 +396,15 @@ try {
   <section class="card" id="listCard" hidden>
     <h2>Из чего состоит день</h2>
     <div id="list"></div>
+  </section>
+
+  <!-- Обзор недели -->
+  <section class="card" id="weekCard" hidden>
+    <h2>Неделя целиком</h2>
+    <div class="week-bars" id="weekBars"></div>
+    <div class="meta" id="weekMeta"></div>
+    <p class="week-line" id="weekLine"></p>
+    <div id="weekHints"></div>
   </section>
 
 </main>
@@ -700,6 +724,89 @@ try {
     }
   }
 
+  // ---------- Обзор недели ----------
+  // Серии тяжёлых дней подряд (неделя повторяется, поэтому воскресенье идёт перед понедельником)
+  function heavyRuns(heavy) {
+    if (heavy.every(Boolean)) return [];
+    const runs = [];
+    for (let i = 0; i < 7; i++) {
+      if (heavy[i] && !heavy[(i + 6) % 7]) {
+        const run = [];
+        for (let j = i; heavy[j % 7] && run.length < 7; j++) run.push(j % 7);
+        if (run.length >= 2) runs.push(run);
+      }
+    }
+    return runs;
+  }
+  function weekSummary() {
+    const ks = days.map((items, i) => (items.length ? stats(items, i) : null));
+    const filled = [];
+    ks.forEach((st, i) => { if (st) filled.push({ i, k: st.k, hours: st.hours }); });
+    if (!filled.length) return null;
+    const avg = filled.reduce((a, d) => a + d.k, 0) / filled.length;
+    const heavy = ks.map(st => !!st && st.k >= 7);
+    const byK = filled.slice().sort((a, b) => a.k - b.k);
+    return {
+      ks, filled, avg,
+      heavyCount: heavy.filter(Boolean).length,
+      allHeavy: heavy.every(Boolean),
+      runs: heavyRuns(heavy),
+      hours: filled.reduce((a, d) => a + d.hours, 0),
+      heaviest: byK[byK.length - 1],
+      lightest: byK[0]
+    };
+  }
+  function renderWeek() {
+    const card = $('weekCard');
+    const w = weekSummary();
+    card.hidden = !w;
+    if (!w) return;
+
+    const bars = $('weekBars');
+    bars.textContent = '';
+    DAYS.forEach((name, i) => {
+      const st = w.ks[i];
+      const b = el('button', 'wbar' + (i === sel ? ' sel' : '') + (i === todayIdx() ? ' today' : ''));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(i === sel));
+      b.setAttribute('aria-label', FULL[i] + (st ? ', коэффициент ' + fmt(st.k) : ', дел нет'));
+      const fill = el('span', 'wfill ' + (st ? kClass(st.k) : 'none'));
+      if (st) fill.style.height = Math.max(4, st.k * 10) + '%';
+      const track = el('span', 'wtrack');
+      track.appendChild(fill);
+      b.append(el('span', 'wval', st ? fmt(st.k) : '–'), track, el('span', 'wname', name));
+      b.addEventListener('click', () => { sel = i; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      bars.appendChild(b);
+    });
+
+    const meta = $('weekMeta');
+    meta.textContent = '';
+    const stat = (value, label, cls) => { const d = el('div'); d.append(el('b', cls || '', value), el('span', '', label)); meta.appendChild(d); };
+    stat(fmt(w.avg), 'средний коэффициент', kClass(w.avg));
+    stat(String(w.heavyCount), 'тяжёлых дней');
+    stat(fmt(w.hours), 'часов за неделю');
+
+    const line = $('weekLine');
+    line.textContent = w.filled.length > 1
+      ? 'Тяжелее всего: ' + FULL[w.heaviest.i] + ' (' + fmt(w.heaviest.k) + '). Легче всего: ' + FULL[w.lightest.i] + ' (' + fmt(w.lightest.k) + ').'
+      : 'Заполните остальные дни, чтобы увидеть неделю целиком.';
+
+    const hints = $('weekHints');
+    hints.textContent = '';
+    if (w.allHeavy) {
+      hints.appendChild(el('div', 'hint', 'Все дни недели тяжёлые: отдыхать почти некогда. Проверьте, что можно убрать или сдвинуть.'));
+    }
+    w.runs.forEach(run => {
+      hints.appendChild(el('div', 'hint', 'Тяжёлые дни идут подряд: ' + run.map(i => DAYS[i]).join(', ') + '. Оставьте между ними время на отдых.'));
+    });
+    if (w.heaviest.k >= 7 && w.lightest.i !== w.heaviest.i && w.heaviest.k - w.lightest.k >= 2) {
+      hints.appendChild(el('div', 'hint', 'Часть дел из дня «' + FULL[w.heaviest.i] + '» можно сделать заранее в более лёгкий день: ' + FULL[w.lightest.i] + '.'));
+    }
+    if (w.filled.length > 1 && w.heavyCount === 0) {
+      hints.appendChild(el('p', 'muted', 'Тяжёлых дней нет: нагрузка на неделю распределена спокойно.'));
+    }
+  }
+
   function renderPie(items, total) {
     const svg = $('pie');
     svg.textContent = '';
@@ -725,6 +832,7 @@ try {
     const items = days[sel], s = stats(items, sel), has = items.length > 0;
     renderTabs();
     renderWeather();
+    renderWeek();
     $('dayTitle').textContent = FULL[sel];
     $('empty').hidden = has;
     $('result').hidden = !has;
