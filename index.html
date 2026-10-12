@@ -112,9 +112,9 @@
   body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",Arial,sans-serif; -webkit-font-smoothing:antialiased; }
   /* Цветные размытые пятна за стеклом — именно сквозь них «преломляется» фон */
   .bg { position:fixed; inset:0; z-index:0; pointer-events:none; background:
-    radial-gradient(45% 35% at 12% 8%, rgba(10,132,255,.38), transparent 70%),
-    radial-gradient(40% 32% at 92% 30%, rgba(191,90,242,.32), transparent 70%),
-    radial-gradient(45% 38% at 60% 98%, rgba(255,159,10,.30), transparent 70%); }
+    radial-gradient(45% 35% at 12% 8%, rgba(var(--b1),.38), transparent 70%),
+    radial-gradient(40% 32% at 92% 30%, rgba(var(--b2),.32), transparent 70%),
+    radial-gradient(45% 38% at 60% 98%, rgba(var(--b3),.30), transparent 70%); }
   .wrap { position:relative; z-index:1; }
   h1 { font-size:2rem; font-weight:700; letter-spacing:-.025em; margin-bottom:2px; }
   h2 { font-weight:600; letter-spacing:-.01em; }
@@ -137,7 +137,7 @@
 
   .btn { border-radius:999px; padding:14px 18px; transition:transform .15s, background .2s; }
   .btn:active { transform:scale(.98); }
-  .btn.primary, .btn.primary:hover { background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%),var(--accent); box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 6px 18px rgba(0,122,255,.35); }
+  .btn.primary, .btn.primary:hover { background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%),var(--accent); box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 6px 18px rgba(var(--glow-rgb),.35); }
   .btn.primary:hover { background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%),var(--accent-hover); }
   .btn.ghost { background:var(--fill); border:0; padding:8px 14px; }
   .btn.ghost:hover, .btn.ghost.armed { background:var(--bad-bg); color:var(--bad); }
@@ -187,8 +187,8 @@
   /* iPad (альбом) и Mac: две колонки — слева ввод и список, справа диаграмма */
   @media (min-width:900px) {
     .wrap { max-width:1120px; display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr); column-gap:24px; align-items:start; }
-    .wrap > h1, .wrap > .sub, .wrap > .weather, .wrap > .tabs, .wrap > .note { grid-column:1 / -1; }
-    .wrap > .weather { grid-row:3; justify-self:center; width:min(100%, 560px); }
+    .wrap > h1, .wrap > .sub, .wrap > .topline, .wrap > .tabs { grid-column:1 / -1; }
+    .wrap > .topline { grid-row:3; justify-self:center; width:min(100%, 560px); }
     .wrap > .tabs { grid-row:4; position:static; justify-self:center; width:min(100%, 560px); }
     .wrap > section:nth-of-type(1) { grid-column:1; grid-row:5; }
     .wrap > section:nth-of-type(2) { grid-column:2; grid-row:5 / span 2; }
@@ -216,7 +216,70 @@
   textarea { width:100%; padding:12px 14px; font:inherit; color:var(--text); background:var(--fill); border:0; border-radius:14px; resize:vertical; margin:8px 0; }
 /* Метка «сегодня» на вкладке дня */
   .tab.today > span:first-child::after { content:''; display:inline-block; width:5px; height:5px; margin-left:4px; border-radius:50%; background:var(--accent); vertical-align:middle; }
+
+  /* ===== Цветовые темы (переключаются в настройках атрибутом data-accent) ===== */
+  :root { --b1:10,132,255; --b2:191,90,242; --b3:255,159,10; --glow-rgb:0,122,255; }
+  :root[data-accent="blue"] { --accent:#007aff; --accent-hover:#0a6cdc; --b1:10,132,255; --b2:191,90,242; --b3:255,159,10; --glow-rgb:0,122,255; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="blue"] { --accent:#0a84ff; --accent-hover:#409cff; } }
+  :root[data-theme="dark"][data-accent="blue"] { --accent:#0a84ff; --accent-hover:#409cff; }
+  :root[data-accent="green"] { --accent:#1f9d4d; --accent-hover:#188540; --b1:48,209,88; --b2:10,132,255; --b3:255,214,10; --glow-rgb:31,157,77; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="green"] { --accent:#30d158; --accent-hover:#5fe283; } }
+  :root[data-theme="dark"][data-accent="green"] { --accent:#30d158; --accent-hover:#5fe283; }
+  :root[data-accent="purple"] { --accent:#9b51e0; --accent-hover:#8440c4; --b1:191,90,242; --b2:10,132,255; --b3:255,55,95; --glow-rgb:155,81,224; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="purple"] { --accent:#bf5af2; --accent-hover:#d08af7; } }
+  :root[data-theme="dark"][data-accent="purple"] { --accent:#bf5af2; --accent-hover:#d08af7; }
+  :root[data-accent="pink"] { --accent:#e5306a; --accent-hover:#c9255a; --b1:255,55,95; --b2:191,90,242; --b3:255,159,10; --glow-rgb:229,48,106; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="pink"] { --accent:#ff375f; --accent-hover:#ff6b87; } }
+  :root[data-theme="dark"][data-accent="pink"] { --accent:#ff375f; --accent-hover:#ff6b87; }
+
+  /* ===== Кнопка и окно настроек ===== */
+  .topline { display:flex; justify-content:flex-end; align-items:stretch; gap:10px; margin:0 0 12px; }
+  .topline .weather { flex:1; margin:0; min-width:0; }
+  .gear { flex:none; width:52px; min-height:52px; display:grid; place-items:center; padding:0; color:var(--text); cursor:pointer;
+    background:linear-gradient(135deg,var(--sheen),transparent 45%),var(--card);
+    -webkit-backdrop-filter:blur(28px) saturate(180%); backdrop-filter:blur(28px) saturate(180%);
+    border:1px solid var(--edge); border-radius:18px; box-shadow:0 6px 18px var(--shadow), inset 0 1px 0 var(--hi); transition:transform .15s; }
+  .gear:active { transform:scale(.95); }
+  .gear svg { width:24px; height:24px; }
+
+  .sheet-backdrop { position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.45);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .sheet { width:100%; max-width:560px; max-height:88vh; max-height:calc(100dvh - env(safe-area-inset-top,0px) - 16px); overflow:auto; overscroll-behavior:contain;
+    background:linear-gradient(135deg,var(--sheen),transparent 45%),linear-gradient(var(--card),var(--card)),var(--bg);
+    border:1px solid var(--edge); border-radius:28px 28px 0 0; padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 40px var(--shadow); }
+  @media (min-width:700px) { .sheet-backdrop { align-items:center; } .sheet { border-radius:28px; max-height:min(86vh,760px); } }
+  .sheet-head { display:flex; align-items:center; justify-content:space-between; margin:0 0 16px; }
+  .sheet-head h2 { font-size:1.3rem; }
+  .set-group { margin:0 0 22px; }
+  .set-group h3 { font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 10px; }
+  .set-row { margin:0 0 12px; }
+  .set-row.inline { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .set-label { display:block; margin:0 0 6px; }
+  .set-row.inline .set-label { margin:0; }
+  .set-help { color:var(--muted); font-size:.85rem; margin:6px 0 0; line-height:1.4; }
+  .set-help a { color:inherit; }
+  .seg { display:flex; gap:2px; padding:3px; background:var(--fill); border-radius:14px; }
+  .seg button { flex:1; min-height:40px; padding:6px 8px; border:0; border-radius:11px; background:transparent; color:var(--text); font:inherit; font-size:.92rem; cursor:pointer; transition:background .2s; }
+  .seg button[aria-checked="true"] { background:var(--thumb); font-weight:600; box-shadow:0 2px 8px var(--shadow), inset 0 1px 0 var(--hi); }
+  .swatches { display:flex; gap:16px; padding:6px 4px; }
+  .swatch { width:40px; height:40px; padding:0; border:0; border-radius:50%; cursor:pointer; }
+  .swatch[aria-checked="true"] { box-shadow:0 0 0 3px var(--bg), 0 0 0 5px var(--text); }
+  .switch { position:relative; flex:none; width:51px; height:31px; padding:0; border:0; border-radius:999px; background:var(--fill); cursor:pointer; transition:background .2s; }
+  .switch::after { content:''; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .2s; }
+  .switch[aria-checked="true"] { background:var(--accent); }
+  .switch[aria-checked="true"]::after { transform:translateX(20px); }
 </style>
+<script>
+/* Применяем тему и цвет до отрисовки страницы, чтобы не было мигания */
+try {
+  var st = JSON.parse(localStorage.getItem('schedule-settings-v1')), root = document.documentElement;
+  if (st) {
+    if (st.theme === 'light' || st.theme === 'dark') { root.setAttribute('data-theme', st.theme); root.style.colorScheme = st.theme; }
+    if (['blue', 'green', 'purple', 'pink'].indexOf(st.accent) > -1) root.setAttribute('data-accent', st.accent);
+  }
+} catch (e) {}
+</script>
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
@@ -224,14 +287,20 @@
   <h1>Индикатор сложности расписания</h1>
   <p class="sub">Добавьте уроки, кружки и домашку — получите коэффициент сложности дня.</p>
 
-  <!-- Погода -->
-  <div class="weather" id="weather" role="status" aria-live="polite" hidden></div>
+  <!-- Погода и настройки -->
+  <div class="topline">
+    <div class="weather" id="weather" role="status" aria-live="polite" hidden></div>
+    <button type="button" class="gear" id="openSettings" aria-label="Настройки" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M10.71 4.92 L10.87 2.47 L13.13 2.47 L13.29 4.92 L16.09 6.08 L17.94 4.46 L19.54 6.06 L17.92 7.91 L19.08 10.71 L21.53 10.87 L21.53 13.13 L19.08 13.29 L17.92 16.09 L19.54 17.94 L17.94 19.54 L16.09 17.92 L13.29 19.08 L13.13 21.53 L10.87 21.53 L10.71 19.08 L7.91 17.92 L6.06 19.54 L4.46 17.94 L6.08 16.09 L4.92 13.29 L2.47 13.13 L2.47 10.87 L4.92 10.71 L6.08 7.91 L4.46 6.06 L6.06 4.46 L7.91 6.08 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+    </button>
+  </div>
 
   <!-- Дни недели -->
   <div class="tabs" id="tabs"></div>
 
   <!-- Форма -->
   <section class="card">
+    <div class="hint" id="storageWarn" style="margin:0 0 12px" hidden></div>
     <form id="form" novalidate autocomplete="off">
       <div class="full">
         <label for="name">Название</label>
@@ -298,9 +367,43 @@
     <div id="list"></div>
   </section>
 
-  <p class="note" id="note"></p>
-  <p class="note">Погода: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, Санкт-Петербург. Плохая погода увеличивает нагрузку дня, ясная и облачная не влияют.</p>
 </main>
+
+<!-- Настройки -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="sheet-head">
+      <h2 id="setTitle">Настройки</h2>
+      <button type="button" class="btn ghost" id="setClose">Готово</button>
+    </div>
+
+    <div class="set-group">
+      <h3>Внешний вид</h3>
+      <div class="set-row"><span class="set-label">Тема</span><div class="seg" id="segTheme" role="radiogroup" aria-label="Тема"></div></div>
+      <div class="set-row"><span class="set-label">Цвет</span><div class="swatches" id="swatches" role="radiogroup" aria-label="Цветовая тема"></div></div>
+      <p class="set-help">«Авто» подстраивается под тему устройства.</p>
+    </div>
+
+    <div class="set-group">
+      <h3>Погода</h3>
+      <div class="set-row inline"><span class="set-label">Учитывать погоду</span><button type="button" class="switch" id="swWeather" role="switch" aria-checked="true" aria-label="Учитывать погоду"></button></div>
+      <div class="set-row" id="rowCity"><span class="set-label">Город</span><div class="seg" id="segCity" role="radiogroup" aria-label="Город"></div></div>
+      <p class="set-help">Плохая погода увеличивает нагрузку дня: туман и морось ×1,05, дождь и снег ×1,1, сильный дождь и снег ×1,15, гроза ×1,25. Ясная и облачная погода не влияет. Данные: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>.</p>
+    </div>
+
+    <div class="set-group">
+      <h3>Расчёт</h3>
+      <div class="set-row"><span class="set-label">Строгость оценки</span><div class="seg" id="segStrict" role="radiogroup" aria-label="Строгость оценки"></div></div>
+      <p class="set-help" id="strictHelp"></p>
+    </div>
+
+    <div class="set-group">
+      <h3>Данные</h3>
+      <button type="button" class="btn ghost" id="resetAll">Удалить всё расписание</button>
+      <p class="set-help">Расписание и настройки хранятся только в вашем браузере на этом устройстве. Чтобы перенести расписание на другое устройство, используйте экспорт в CSV.</p>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -309,18 +412,55 @@
   // ---------- Константы ----------
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-  const LOAD_MAX = 36;   // нагрузка (сложность × часы), которая даёт коэффициент 10
   const COLORS = ['#0a84ff', '#ff9f0a', '#30d158', '#bf5af2', '#ff375f', '#64d2ff', '#ffd60a', '#8e8e93'];
   const KEY = 'schedule-load-v1';
   const SVG = 'http://www.w3.org/2000/svg';
 
+  // ---------- Настройки ----------
+  const SETTINGS_KEY = 'schedule-settings-v1';
+  const DEFAULTS = { theme: 'auto', accent: 'blue', city: 'spb', weather: true, strict: 'normal' };
+  const CITIES = {
+    spb: { name: 'Санкт-Петербург', lat: 59.9386, lon: 30.3141 },
+    msk: { name: 'Москва', lat: 55.7558, lon: 37.6173 }
+  };
+  const LOAD_BY = { soft: 45, normal: 36, hard: 27 };   // нагрузка дня (сложность × часы), которая даёт коэффициент 10
+  const OPTIONS = {
+    theme: [['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']],
+    city: [['spb', 'Санкт-Петербург'], ['msk', 'Москва']],
+    strict: [['soft', 'Мягкая'], ['normal', 'Обычная'], ['hard', 'Строгая']]
+  };
+  const ACCENTS = [['blue', 'Синий', '#0a84ff'], ['green', 'Зелёный', '#30d158'], ['purple', 'Фиолетовый', '#bf5af2'], ['pink', 'Розовый', '#ff375f']];
+  const STRICT_HELP = {
+    soft: 'Мягкая: день считается тяжёлым позже (10 из 10 при нагрузке 45).',
+    normal: 'Обычная: 6 часов дел со сложностью 6 дают 10 из 10 (нагрузка 36).',
+    hard: 'Строгая: тяжёлый день наступает раньше (10 из 10 при нагрузке 27).'
+  };
+  let settings = loadSettings();
+  const loadMax = () => LOAD_BY[settings.strict];
+
+  function loadSettings() {
+    const s = Object.assign({}, DEFAULTS);
+    try {
+      const v = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (v && typeof v === 'object') {
+        if (OPTIONS.theme.some(o => o[0] === v.theme)) s.theme = v.theme;
+        if (ACCENTS.some(o => o[0] === v.accent)) s.accent = v.accent;
+        if (OPTIONS.city.some(o => o[0] === v.city)) s.city = v.city;
+        if (OPTIONS.strict.some(o => o[0] === v.strict)) s.strict = v.strict;
+        if (typeof v.weather === 'boolean') s.weather = v.weather;
+      }
+    } catch (e) { /* настроек нет или хранилище недоступно: берём стандартные */ }
+    return s;
+  }
+
   // ---------- Погода (Санкт-Петербург, сервис Open-Meteo, ключ не нужен) ----------
   const WEATHER_KEY = 'schedule-weather-v1';
-  const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=59.9386&longitude=30.3141'
+  const weatherUrl = c => 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat + '&longitude=' + c.lon
     + '&current=temperature_2m,weather_code&daily=weather_code&timezone=Europe%2FMoscow&forecast_days=7';
   let weather = loadWeather();   // { t: время запроса, temp: °C сейчас, code: код сейчас, daily: { 'ГГГГ-ММ-ДД': код } }
   let weatherState = weather ? 'ok' : 'loading';   // 'loading' | 'ok' | 'error'
   let weatherRetries = 0;
+  let weatherReq = 0;   // номер последнего запроса: устаревшие ответы игнорируются
 
   // Код погоды WMO → значок, название и множитель нагрузки дня (1 = не влияет)
   function weatherInfo(code) {
@@ -338,33 +478,38 @@
   // Дата ближайшего дня недели с индексом i (сегодня или в ближайшие 6 дней)
   function dateOfDay(i) { const d = new Date(); d.setDate(d.getDate() + (i - todayIdx() + 7) % 7); return ymd(d); }
   function dayWeather(i) {
-    if (!weather || !weather.daily) return null;
+    if (!settings.weather || !weather || !weather.daily) return null;
     const c = weather.daily[dateOfDay(i)];
     return typeof c === 'number' ? weatherInfo(c) : null;
   }
   const dayMult = i => { const w = dayWeather(i); return w ? w.mult : 1; };
 
   function loadWeather() {
+    if (!settings.weather) return null;
     try {
-      const w = JSON.parse(localStorage.getItem(WEATHER_KEY));
+      const w = JSON.parse(localStorage.getItem(WEATHER_KEY + '-' + settings.city));
       if (w && w.daily && Date.now() - w.t < 6 * 3600 * 1000) return w;   // старше 6 часов не используем
     } catch (e) { /* нет сохранённой погоды */ }
     return null;
   }
   function fetchWeather() {
+    if (!settings.weather) return;
     if (!window.fetch) { if (!weather) weatherState = 'error'; render(); return; }
+    const city = settings.city, req = ++weatherReq;
     const ctrl = window.AbortController ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), 10000) : 0;
-    fetch(WEATHER_URL, ctrl ? { signal: ctrl.signal } : undefined)
+    fetch(weatherUrl(CITIES[city]), ctrl ? { signal: ctrl.signal } : undefined)
       .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(j => {
+        if (req !== weatherReq) return;   // за это время сменили город или выключили погоду
         const daily = {};
         (j.daily.time || []).forEach((d, i) => { if (typeof j.daily.weather_code[i] === 'number') daily[d] = j.daily.weather_code[i]; });
         weather = { t: Date.now(), temp: j.current.temperature_2m, code: j.current.weather_code, daily };
         weatherState = 'ok'; weatherRetries = 0;
-        try { localStorage.setItem(WEATHER_KEY, JSON.stringify(weather)); } catch (e) { /* не страшно */ }
+        try { localStorage.setItem(WEATHER_KEY + '-' + city, JSON.stringify(weather)); } catch (e) { /* не страшно */ }
       })
       .catch(() => {
+        if (req !== weatherReq) return;
         // нет сети: остаётся последняя сохранённая погода; если её нет, показываем ошибку и пробуем ещё раз
         if (!weather) weatherState = 'error';
         if (weatherRetries++ < 3) setTimeout(fetchWeather, 60 * 1000);
@@ -395,11 +540,10 @@
     updateNote();
   }
   function updateNote() {
-    const n = document.getElementById('note');
-    if (!n) return;
-    n.textContent = storageOk
-      ? 'Нагрузка = сложность × часы. Данные сохраняются автоматически в вашем браузере на этом устройстве. Чтобы перенести их на другое устройство, используйте экспорт в CSV.'
-      : 'Браузер не разрешает сохранять данные (возможно, включён приватный режим): после закрытия вкладки расписание пропадёт. Сделайте экспорт в CSV, чтобы не потерять его.';
+    const w = document.getElementById('storageWarn');
+    if (!w) return;
+    w.hidden = storageOk;
+    w.textContent = storageOk ? '' : 'Браузер не разрешает сохранять данные (возможно, включён приватный режим): после закрытия вкладки расписание и настройки пропадут. Сделайте экспорт в CSV, чтобы не потерять расписание.';
   }
 
   // ---------- Элементы ----------
@@ -408,13 +552,13 @@
   const errorEl = $('error');
 
   // ---------- Расчёты ----------
-  // Нагрузка элемента = сложность × часы. Коэффициент дня = нагрузка дня / 36 × 10, не больше 10.
+  // Нагрузка элемента = сложность × часы. Коэффициент дня = нагрузка дня / порог × 10, не больше 10 (порог 36, в настройках можно сделать мягче или строже).
   // Погода умножает нагрузку дня: ясно ×1, дождь ×1,1, гроза ×1,25 и т. д.
   function stats(items, dayIdx) {
     let load = 0, min = 0, dm = 0;
     for (const it of items) { load += it.d * it.m / 60; min += it.m; dm += it.d * it.m; }
     const m = dayIdx === undefined ? 1 : dayMult(dayIdx);
-    return { load, hours: min / 60, avg: min ? dm / min : 0, k: Math.min(10, load * m / LOAD_MAX * 10), mult: m };
+    return { load, hours: min / 60, avg: min ? dm / min : 0, k: Math.min(10, load * m / loadMax() * 10), mult: m };
   }
   const kClass = k => (k < 4 ? 'good' : k < 7 ? 'warn' : 'bad');   // зелёный / жёлтый / красный
   const fmt = n => n.toFixed(1).replace('.', ',');
@@ -455,6 +599,7 @@
   function renderWeather() {
     const box = $('weather');
     box.textContent = '';
+    if (!settings.weather) { box.hidden = true; return; }
     box.hidden = false;
     if (!weather) {
       if (weatherState === 'loading') { box.appendChild(el('div', 'w-now', 'Загружаю погоду…')); return; }
@@ -467,7 +612,7 @@
       return;
     }
     const now = weatherInfo(weather.code);
-    box.appendChild(el('div', 'w-now', now.icon + ' Санкт-Петербург: сейчас ' + fmtTemp(weather.temp) + ', ' + now.text));
+    box.appendChild(el('div', 'w-now', now.icon + ' ' + CITIES[settings.city].name + ': сейчас ' + fmtTemp(weather.temp) + ', ' + now.text));
     const w = dayWeather(sel);
     if (w) {
       const note = w.mult > 1 ? 'нагрузка дня +' + Math.round((w.mult - 1) * 100) + '%' : 'на сложность не влияет';
@@ -769,6 +914,106 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNewDay(); });
   window.addEventListener('focus', checkNewDay);
   setInterval(checkNewDay, 60000);   // и проверка раз в минуту
+
+  // ---------- Настройки: применение и окно ----------
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* не страшно */ }
+  }
+  function applySettings() {
+    const r = document.documentElement;
+    if (settings.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = ''; }
+    else { r.setAttribute('data-theme', settings.theme); r.style.colorScheme = settings.theme; }
+    r.setAttribute('data-accent', settings.accent);
+  }
+  // После смены города или переключателя погоды: берём сохранённую погоду нового города и запрашиваем свежую
+  function weatherReset() {
+    weatherReq++;
+    weather = loadWeather();
+    weatherState = weather ? 'ok' : 'loading';
+    weatherRetries = 0;
+    render();
+    fetchWeather();
+  }
+  function setSetting(key, value) {
+    settings[key] = value;
+    saveSettings();
+    applySettings();
+    renderSettings();
+    if (key === 'city' || key === 'weather') weatherReset(); else render();
+  }
+  function buildSettings() {
+    [['segTheme', 'theme'], ['segCity', 'city'], ['segStrict', 'strict']].forEach(([id, key]) => {
+      OPTIONS[key].forEach(([val, label]) => {
+        const b = el('button', '', label);
+        b.type = 'button'; b.dataset.val = val;
+        b.setAttribute('role', 'radio');
+        b.addEventListener('click', () => setSetting(key, val));
+        $(id).appendChild(b);
+      });
+    });
+    ACCENTS.forEach(([val, label, color]) => {
+      const b = el('button', 'swatch');
+      b.type = 'button'; b.dataset.val = val;
+      b.style.background = color;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-label', label);
+      b.addEventListener('click', () => setSetting('accent', val));
+      $('swatches').appendChild(b);
+    });
+    $('swWeather').addEventListener('click', () => setSetting('weather', !settings.weather));
+  }
+  function renderSettings() {
+    [['segTheme', 'theme'], ['segCity', 'city'], ['segStrict', 'strict'], ['swatches', 'accent']].forEach(([id, key]) => {
+      $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.val === settings[key])));
+    });
+    $('swWeather').setAttribute('aria-checked', String(settings.weather));
+    $('rowCity').hidden = !settings.weather;
+    $('strictHelp').textContent = STRICT_HELP[settings.strict];
+  }
+
+  const sheetBack = $('sheetBackdrop');
+  let lastFocus = null;
+  function openSheet() {
+    lastFocus = document.activeElement;
+    sheetBack.hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('setClose').focus();
+  }
+  function closeSheet() {
+    sheetBack.hidden = true;
+    document.body.style.overflow = '';
+    armReset(false);
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  $('openSettings').addEventListener('click', openSheet);
+  $('setClose').addEventListener('click', closeSheet);
+  sheetBack.addEventListener('click', e => { if (e.target === sheetBack) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetBack.hidden) closeSheet(); });
+
+  // Удаление всего расписания: нужно нажать два раза подряд
+  let resetArmed = false, resetTimer = 0;
+  function armReset(on) {
+    resetArmed = on;
+    const b = $('resetAll');
+    b.classList.toggle('armed', on);
+    b.textContent = on ? 'Нажмите ещё раз, чтобы удалить всё' : 'Удалить всё расписание';
+    clearTimeout(resetTimer);
+    if (on) resetTimer = setTimeout(() => armReset(false), 4000);
+  }
+  $('resetAll').addEventListener('click', () => {
+    if (!resetArmed) { armReset(true); return; }
+    days = [[], [], [], [], [], [], []];
+    save(); render(); armReset(false);
+  });
+
+  // Настройки, изменённые в другой вкладке, применяются и здесь
+  window.addEventListener('storage', e => {
+    if (e.key === SETTINGS_KEY) { settings = loadSettings(); applySettings(); renderSettings(); weatherReset(); }
+  });
+
+  buildSettings();
+  applySettings();
+  renderSettings();
 
   // Если сайт открыт в двух вкладках, изменения из одной появляются в другой
   window.addEventListener('storage', e => { if (e.key === KEY) { days = loadDays(); render(); } });
