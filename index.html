@@ -83,6 +83,11 @@
   .icon-btn { font:inherit; background:none; border:0; color:var(--muted); cursor:pointer; padding:4px 8px; border-radius:8px; }
   .icon-btn:hover { color:var(--bad); background:var(--bad-bg); }
   .note { color:var(--muted); font-size:.8rem; text-align:center; }
+  .note a { color:inherit; }
+  .weather { margin:0 0 12px; padding:10px 14px; border-radius:16px; background:var(--fill, var(--card)); border:1px solid var(--line); font-size:.95rem; line-height:1.4; }
+  .weather .w-now { font-weight:600; }
+  .weather .w-day { color:var(--muted); font-size:.9rem; margin-top:2px; }
+  .weather .w-day.bad { color:var(--bad); }
 /* ===== Стиль Apple + Liquid Glass ===== */
   :root {
     --bg:#f2f2f7; --card:rgba(255,255,255,.52); --text:#1d1d1f; --muted:#6e6e73; --line:rgba(60,60,67,.14);
@@ -182,11 +187,12 @@
   /* iPad (альбом) и Mac: две колонки — слева ввод и список, справа диаграмма */
   @media (min-width:900px) {
     .wrap { max-width:1120px; display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr); column-gap:24px; align-items:start; }
-    .wrap > h1, .wrap > .sub, .wrap > .tabs, .wrap > .note { grid-column:1 / -1; }
-    .wrap > .tabs { position:static; justify-self:center; width:min(100%, 560px); }
-    .wrap > section:nth-of-type(1) { grid-column:1; grid-row:4; }
-    .wrap > section:nth-of-type(2) { grid-column:2; grid-row:4 / span 2; }
-    .wrap > section:nth-of-type(3) { grid-column:1; grid-row:5; }
+    .wrap > h1, .wrap > .sub, .wrap > .weather, .wrap > .tabs, .wrap > .note { grid-column:1 / -1; }
+    .wrap > .weather { grid-row:3; justify-self:center; width:min(100%, 560px); }
+    .wrap > .tabs { grid-row:4; position:static; justify-self:center; width:min(100%, 560px); }
+    .wrap > section:nth-of-type(1) { grid-column:1; grid-row:5; }
+    .wrap > section:nth-of-type(2) { grid-column:2; grid-row:5 / span 2; }
+    .wrap > section:nth-of-type(3) { grid-column:1; grid-row:6; }
     .donut { width:clamp(240px, 24vw, 320px); }
   }
   /* Если окно достаточно высокое, диаграмма остаётся на виду при прокрутке списка */
@@ -217,6 +223,9 @@
 <main class="wrap">
   <h1>Индикатор сложности расписания</h1>
   <p class="sub">Добавьте уроки, кружки и домашку — получите коэффициент сложности дня.</p>
+
+  <!-- Погода -->
+  <div class="weather" id="weather" role="status" aria-live="polite" hidden></div>
 
   <!-- Дни недели -->
   <div class="tabs" id="tabs"></div>
@@ -290,6 +299,7 @@
   </section>
 
   <p class="note" id="note"></p>
+  <p class="note">Погода: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, Санкт-Петербург. Плохая погода увеличивает нагрузку дня, ясная и облачная не влияют.</p>
 </main>
 
 <script>
@@ -303,6 +313,64 @@
   const COLORS = ['#0a84ff', '#ff9f0a', '#30d158', '#bf5af2', '#ff375f', '#64d2ff', '#ffd60a', '#8e8e93'];
   const KEY = 'schedule-load-v1';
   const SVG = 'http://www.w3.org/2000/svg';
+
+  // ---------- Погода (Санкт-Петербург, сервис Open-Meteo, ключ не нужен) ----------
+  const WEATHER_KEY = 'schedule-weather-v1';
+  const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=59.9386&longitude=30.3141'
+    + '&current=temperature_2m,weather_code&daily=weather_code&timezone=Europe%2FMoscow&forecast_days=7';
+  let weather = loadWeather();   // { t: время запроса, temp: °C сейчас, code: код сейчас, daily: { 'ГГГГ-ММ-ДД': код } }
+  let weatherState = weather ? 'ok' : 'loading';   // 'loading' | 'ok' | 'error'
+  let weatherRetries = 0;
+
+  // Код погоды WMO → значок, название и множитель нагрузки дня (1 = не влияет)
+  function weatherInfo(code) {
+    if (code <= 3) return { icon: ['☀️', '🌤️', '⛅', '☁️'][code], text: ['ясно', 'малооблачно', 'облачно', 'пасмурно'][code], mult: 1 };
+    if (code === 45 || code === 48) return { icon: '🌫️', text: 'туман', mult: 1.05 };
+    if (code >= 51 && code <= 57) return { icon: '🌦️', text: 'морось', mult: 1.05 };
+    if (code === 65 || code === 67 || code === 82) return { icon: '🌧️', text: 'сильный дождь', mult: 1.15 };
+    if ((code >= 61 && code <= 66) || code === 80 || code === 81) return { icon: '🌧️', text: 'дождь', mult: 1.1 };
+    if (code === 75 || code === 86) return { icon: '❄️', text: 'сильный снег', mult: 1.15 };
+    if ((code >= 71 && code <= 77) || code === 85) return { icon: '🌨️', text: 'снег', mult: 1.1 };
+    if (code >= 95) return { icon: '⛈️', text: 'гроза', mult: 1.25 };
+    return { icon: '🌡️', text: 'погода неизвестна', mult: 1 };
+  }
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  // Дата ближайшего дня недели с индексом i (сегодня или в ближайшие 6 дней)
+  function dateOfDay(i) { const d = new Date(); d.setDate(d.getDate() + (i - todayIdx() + 7) % 7); return ymd(d); }
+  function dayWeather(i) {
+    if (!weather || !weather.daily) return null;
+    const c = weather.daily[dateOfDay(i)];
+    return typeof c === 'number' ? weatherInfo(c) : null;
+  }
+  const dayMult = i => { const w = dayWeather(i); return w ? w.mult : 1; };
+
+  function loadWeather() {
+    try {
+      const w = JSON.parse(localStorage.getItem(WEATHER_KEY));
+      if (w && w.daily && Date.now() - w.t < 6 * 3600 * 1000) return w;   // старше 6 часов не используем
+    } catch (e) { /* нет сохранённой погоды */ }
+    return null;
+  }
+  function fetchWeather() {
+    if (!window.fetch) { if (!weather) weatherState = 'error'; render(); return; }
+    const ctrl = window.AbortController ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 10000) : 0;
+    fetch(WEATHER_URL, ctrl ? { signal: ctrl.signal } : undefined)
+      .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(j => {
+        const daily = {};
+        (j.daily.time || []).forEach((d, i) => { if (typeof j.daily.weather_code[i] === 'number') daily[d] = j.daily.weather_code[i]; });
+        weather = { t: Date.now(), temp: j.current.temperature_2m, code: j.current.weather_code, daily };
+        weatherState = 'ok'; weatherRetries = 0;
+        try { localStorage.setItem(WEATHER_KEY, JSON.stringify(weather)); } catch (e) { /* не страшно */ }
+      })
+      .catch(() => {
+        // нет сети: остаётся последняя сохранённая погода; если её нет, показываем ошибку и пробуем ещё раз
+        if (!weather) weatherState = 'error';
+        if (weatherRetries++ < 3) setTimeout(fetchWeather, 60 * 1000);
+      })
+      .then(() => { clearTimeout(timer); render(); });
+  }
 
   // ---------- Данные ----------
   let days = loadDays();                       // 7 списков: { t: тип, n: название, d: сложность, m: минуты }
@@ -341,10 +409,12 @@
 
   // ---------- Расчёты ----------
   // Нагрузка элемента = сложность × часы. Коэффициент дня = нагрузка дня / 36 × 10, не больше 10.
-  function stats(items) {
+  // Погода умножает нагрузку дня: ясно ×1, дождь ×1,1, гроза ×1,25 и т. д.
+  function stats(items, dayIdx) {
     let load = 0, min = 0, dm = 0;
     for (const it of items) { load += it.d * it.m / 60; min += it.m; dm += it.d * it.m; }
-    return { load, hours: min / 60, avg: min ? dm / min : 0, k: Math.min(10, load / LOAD_MAX * 10) };
+    const m = dayIdx === undefined ? 1 : dayMult(dayIdx);
+    return { load, hours: min / 60, avg: min ? dm / min : 0, k: Math.min(10, load * m / LOAD_MAX * 10), mult: m };
   }
   const kClass = k => (k < 4 ? 'good' : k < 7 ? 'warn' : 'bad');   // зелёный / жёлтый / красный
   const fmt = n => n.toFixed(1).replace('.', ',');
@@ -367,7 +437,7 @@
     const box = $('tabs');
     box.textContent = '';
     DAYS.forEach((name, i) => {
-      const s = stats(days[i]);
+      const s = stats(days[i], i);
       const b = el('button', 'tab' + (i === sel ? ' active' : ''));
       b.type = 'button';
       b.dataset.day = i;
@@ -376,6 +446,33 @@
       b.append(el('span', '', name), el('span', 'k ' + (days[i].length ? kClass(s.k) : 'none'), days[i].length ? fmt(s.k) : '–'));
       box.appendChild(b);
     });
+  }
+
+  function fmtTemp(t) {
+    const r = Math.round(t);
+    return (r > 0 ? '+' + r : r < 0 ? '\u2212' + Math.abs(r) : '0') + ' °C';
+  }
+  function renderWeather() {
+    const box = $('weather');
+    box.textContent = '';
+    box.hidden = false;
+    if (!weather) {
+      if (weatherState === 'loading') { box.appendChild(el('div', 'w-now', 'Загружаю погоду…')); return; }
+      box.appendChild(el('div', 'w-day', 'Погоду загрузить не удалось: нет интернета или сайт открыт в режиме предпросмотра. Коэффициент считается без погоды.'));
+      const retry = el('button', 'btn ghost', 'Повторить');
+      retry.type = 'button';
+      retry.style.marginTop = '8px';
+      retry.addEventListener('click', () => { weatherState = 'loading'; weatherRetries = 0; render(); fetchWeather(); });
+      box.appendChild(retry);
+      return;
+    }
+    const now = weatherInfo(weather.code);
+    box.appendChild(el('div', 'w-now', now.icon + ' Санкт-Петербург: сейчас ' + fmtTemp(weather.temp) + ', ' + now.text));
+    const w = dayWeather(sel);
+    if (w) {
+      const note = w.mult > 1 ? 'нагрузка дня +' + Math.round((w.mult - 1) * 100) + '%' : 'на сложность не влияет';
+      box.appendChild(el('div', 'w-day' + (w.mult > 1 ? ' bad' : ''), FULL[sel] + ': ' + w.icon + ' ' + w.text + ', ' + note));
+    }
   }
 
   function renderPie(items, total) {
@@ -400,8 +497,9 @@
   }
 
   function render() {
-    const items = days[sel], s = stats(items), has = items.length > 0;
+    const items = days[sel], s = stats(items, sel), has = items.length > 0;
     renderTabs();
+    renderWeather();
     $('dayTitle').textContent = FULL[sel];
     $('empty').hidden = has;
     $('result').hidden = !has;
@@ -420,9 +518,13 @@
     // Подсказки: тяжёлый завтрашний день и риск для сна
     const hints = $('hints');
     hints.textContent = '';
-    const next = stats(days[(sel + 1) % 7]);
+    const next = stats(days[(sel + 1) % 7], (sel + 1) % 7);
     if (days[(sel + 1) % 7].length && next.k >= 7 && s.k < 7) {
       hints.appendChild(el('div', 'hint', 'Завтра тяжёлый день (' + fmt(next.k) + '): сделайте часть уроков заранее, сегодня.'));
+    }
+    const w = dayWeather(sel);
+    if (w && w.mult > 1) {
+      hints.appendChild(el('div', 'hint', 'Погода (' + w.text + ') увеличила нагрузку дня на ' + Math.round((w.mult - 1) * 100) + '%.'));
     }
     if (s.hours > 9) {
       hints.appendChild(el('div', 'hint', 'Занято больше 9 часов. Следите, чтобы хватило времени на сон (8–10 часов).'));
@@ -675,6 +777,8 @@
 
   render();
   updateNote();
+  fetchWeather();
+  setInterval(fetchWeather, 30 * 60 * 1000);   // обновлять погоду раз в полчаса
 })();
 </script>
 </body>
