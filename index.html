@@ -184,21 +184,21 @@
     .donut { width:clamp(220px, 40vw, 280px); }
   }
 
-  /* iPad (альбом) и Mac: две колонки — слева ввод и список, справа диаграмма */
+  /* iPad (альбом) и Mac: две колонки — слева диаграмма дня, справа список дел */
   @media (min-width:900px) {
     .wrap { max-width:1120px; display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr); column-gap:24px; align-items:start; }
     .wrap > h1, .wrap > .sub, .wrap > .topline, .wrap > .tabs { grid-column:1 / -1; }
     .wrap > .topline { grid-row:3; justify-self:center; width:min(100%, 560px); }
     .wrap > .tabs { grid-row:4; position:static; justify-self:center; width:min(100%, 560px); }
-    .wrap > section:nth-of-type(1) { grid-column:1; grid-row:5; }
-    .wrap > section:nth-of-type(2) { grid-column:2; grid-row:5 / span 2; }
-    .wrap > section:nth-of-type(3) { grid-column:1; grid-row:6; }
-    .wrap > section:nth-of-type(4) { grid-column:1 / -1; grid-row:7; }
+    .wrap > .add-btn { grid-column:1 / -1; grid-row:5; justify-self:center; width:min(100%, 560px); }
+    .wrap > section:nth-of-type(1) { grid-column:1; grid-row:6; }
+    .wrap > section:nth-of-type(2) { grid-column:2; grid-row:6; }
+    .wrap > section:nth-of-type(3) { grid-column:1 / -1; grid-row:7; }
     .donut { width:clamp(240px, 24vw, 320px); }
   }
   /* Если окно достаточно высокое, диаграмма остаётся на виду при прокрутке списка */
   @media (min-width:900px) and (min-height:720px) {
-    .wrap > section:nth-of-type(2) { position:sticky; top:calc(env(safe-area-inset-top,0px) + 16px); }
+    .wrap > section:nth-of-type(1) { position:sticky; top:calc(env(safe-area-inset-top,0px) + 16px); }
   }
 
   /* iPhone в горизонтальном режиме (мало высоты): без липких вкладок, диаграмма меньше */
@@ -257,6 +257,11 @@
   .wbar.today .wname { color:var(--accent); font-weight:700; }
   .week-line { margin:12px 0 0; font-size:.92rem; }
   .meta b.good { color:var(--good); } .meta b.warn { color:var(--warn); } .meta b.bad { color:var(--bad); }
+
+  /* ===== Кнопка «Добавить дело» и её окно ===== */
+  .add-btn { display:block; width:100%; min-height:52px; margin:0 0 16px; font-size:1.05rem; }
+  .seg.days button { padding:6px 0; }
+  #addOk:empty { display:none; }
 
   /* ===== Кнопка и окно настроек ===== */
   .topline { display:flex; justify-content:flex-end; align-items:stretch; gap:10px; margin:0 0 12px; }
@@ -329,52 +334,18 @@ try {
   <!-- Дни недели -->
   <div class="tabs" id="tabs"></div>
 
-  <!-- Форма -->
-  <section class="card">
-    <div class="hint" id="storageWarn" style="margin:0 0 12px" hidden></div>
-    <form id="form" novalidate autocomplete="off">
-      <div class="full">
-        <label for="name">Название</label>
-        <input id="name" type="text" maxlength="40" placeholder="Например, Математика">
-      </div>
-      <div>
-        <label for="type">Что это</label>
-        <select id="type"><option>Урок</option><option>Кружок</option><option>Домашка</option></select>
-      </div>
-      <div>
-        <label for="min">Длительность, мин</label>
-        <input id="min" type="number" inputmode="numeric" min="5" max="600" value="45">
-      </div>
-      <div class="full">
-        <label for="diff">Сложность: <b id="diffVal">5</b> из 10</label>
-        <input id="diff" type="range" min="1" max="10" value="5">
-      </div>
-      <button type="submit" class="btn primary full">Добавить в день</button>
-    </form>
-    <p id="error" class="error" role="alert"></p>
-    <div class="io">
-      <button type="button" id="exp" class="btn ghost">Экспорт в CSV</button>
-      <button type="button" id="imp" class="btn ghost">Импорт из CSV</button>
-      <label class="chk"><input type="checkbox" id="replace"> Заменить текущее</label>
-      <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain" hidden>
-    </div>
-    <p id="ioMsg" class="io-msg" role="status"></p>
-    <details class="paste">
-      <summary>Вставить CSV текстом</summary>
-      <textarea id="paste" rows="5" placeholder="День;Тип;Название;Сложность;Минуты&#10;Пн;Урок;Математика;7;45"></textarea>
-      <button type="button" id="pasteGo" class="btn ghost">Импортировать текст</button>
-    </details>
-  </section>
+  <button type="button" class="btn primary add-btn" id="openAdd" aria-haspopup="dialog">+ Добавить дело</button>
 
   <!-- Результат дня -->
   <section class="card">
+    <div class="hint" id="storageWarn" style="margin:0 0 12px" hidden></div>
     <div class="head">
       <h2 id="dayTitle">День</h2>
       <button type="button" id="clear" class="btn ghost" hidden>Очистить день</button>
     </div>
 
     <div id="empty">
-      <p class="muted" style="margin:4px 0 12px">В этом дне пока ничего нет.</p>
+      <p class="muted" style="margin:4px 0 12px">В этом дне пока ничего нет. Нажмите «Добавить дело».</p>
       <button type="button" id="sample" class="btn ghost">Заполнить примером недели</button>
     </div>
 
@@ -408,6 +379,38 @@ try {
   </section>
 
 </main>
+
+<!-- Добавить дело -->
+<div class="sheet-backdrop" id="addBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+    <div class="sheet-head">
+      <h2 id="addTitle">Добавить дело</h2>
+      <button type="button" class="btn ghost" id="addClose">Готово</button>
+    </div>
+    <div class="set-row"><span class="set-label">День</span><div class="seg days" id="segDay" role="radiogroup" aria-label="День недели"></div></div>
+    <form id="form" novalidate autocomplete="off">
+      <div class="full">
+        <label for="name">Название</label>
+        <input id="name" type="text" maxlength="40" placeholder="Например, Математика">
+      </div>
+      <div>
+        <label for="type">Что это</label>
+        <select id="type"><option>Урок</option><option>Кружок</option><option>Домашка</option></select>
+      </div>
+      <div>
+        <label for="min">Длительность, мин</label>
+        <input id="min" type="number" inputmode="numeric" min="5" max="600" value="45">
+      </div>
+      <div class="full">
+        <label for="diff">Сложность: <b id="diffVal">5</b> из 10</label>
+        <input id="diff" type="range" min="1" max="10" value="5">
+      </div>
+      <button type="submit" class="btn primary full">Добавить в день</button>
+    </form>
+    <p id="error" class="error" role="alert"></p>
+    <p id="addOk" class="io-msg ok" role="status"></p>
+  </div>
+</div>
 
 <!-- Настройки -->
 <div class="sheet-backdrop" id="sheetBackdrop" hidden>
@@ -453,7 +456,19 @@ try {
 
     <div class="set-group">
       <h3>Данные</h3>
-      <button type="button" class="btn ghost" id="resetAll">Удалить всё расписание</button>
+      <div class="io" style="border-top:0;padding-top:0;margin-top:0">
+        <button type="button" id="exp" class="btn ghost">Экспорт в CSV</button>
+        <button type="button" id="imp" class="btn ghost">Импорт из CSV</button>
+        <label class="chk"><input type="checkbox" id="replace"> Заменить текущее</label>
+        <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain" hidden>
+      </div>
+      <p id="ioMsg" class="io-msg" role="status"></p>
+      <details class="paste">
+        <summary>Вставить CSV текстом</summary>
+        <textarea id="paste" rows="5" placeholder="День;Тип;Название;Сложность;Минуты&#10;Пн;Урок;Математика;7;45"></textarea>
+        <button type="button" id="pasteGo" class="btn ghost">Импортировать текст</button>
+      </details>
+      <button type="button" class="btn ghost" id="resetAll" style="margin-top:12px">Удалить всё расписание</button>
       <p class="set-help">Расписание и настройки хранятся только в вашем браузере на этом устройстве. Чтобы перенести расписание на другое устройство, используйте экспорт в CSV.</p>
     </div>
   </div>
@@ -908,14 +923,49 @@ try {
       minEl.focus();
       return;
     }
-    const t = typeEl.value;
-    days[sel].push({ t, n: nameEl.value.trim() || t, d: Number(diffEl.value), m });
+    const t = typeEl.value, added = nameEl.value.trim() || t;
+    days[sel].push({ t, n: added, d: Number(diffEl.value), m });
     save();
     errorEl.textContent = '';
     nameEl.value = '';
     nameEl.focus();
     render();
+    $('addOk').textContent = 'Добавлено в день «' + FULL[sel] + '»: ' + added + '. Дел в этот день: ' + days[sel].length + '.';
   });
+
+  // ---------- Окно «Добавить дело» ----------
+  const addBack = $('addBackdrop'), segDay = $('segDay');
+  let addFocus = null;
+  DAYS.forEach((name, i) => {
+    const b = el('button', '', name);
+    b.type = 'button';
+    b.dataset.val = i;
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-label', FULL[i]);
+    b.addEventListener('click', () => { sel = i; $('addOk').textContent = ''; render(); markDay(); });
+    segDay.appendChild(b);
+  });
+  function markDay() {
+    segDay.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.val) === sel)));
+  }
+  function openAdd() {
+    addFocus = document.activeElement;
+    $('addOk').textContent = '';
+    errorEl.textContent = '';
+    markDay();
+    addBack.hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('addClose').focus();
+  }
+  function closeAdd() {
+    addBack.hidden = true;
+    document.body.style.overflow = '';
+    if (addFocus && addFocus.focus) addFocus.focus();
+  }
+  $('openAdd').addEventListener('click', openAdd);
+  $('addClose').addEventListener('click', closeAdd);
+  addBack.addEventListener('click', e => { if (e.target === addBack) closeAdd(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !addBack.hidden) closeAdd(); });
 
   // Удаление одного элемента
   $('list').addEventListener('click', e => {
@@ -1399,26 +1449,30 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     anim(er, dropIn, { duration: 280 });
   });
 
-  // 8. Окно настроек: выезжает снизу (на широком экране — всплывает) и так же закрывается
-  const sb = $('sheetBackdrop'), wide = matchMedia('(min-width:700px)'); let open = !sb.hidden;
+  // 8. Окна (настройки и «Добавить дело»): выезжают снизу (на широком экране всплывают) и так же закрываются
+  const wide = matchMedia('(min-width:700px)');
   const sheetFrom = () => wide.matches ? { opacity: 0, transform: 'translateY(18px) scale(.96)' } : { transform: 'translateY(100%)' };
-  watch(sb, () => {
-    if (!sb.hidden && !open) {
-      anim(sb, [{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
-      anim(sb.firstElementChild, [sheetFrom(), { opacity: 1, transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.2,.9,.25,1)' });
-    } else if (sb.hidden && open && !still()) {
-      // Окно уже скрыто, поэтому анимируем его копию и удаляем после окончания
-      const g = sb.cloneNode(true);
-      g.hidden = false; g.removeAttribute('id');
-      g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
-      g.inert = true; g.setAttribute('aria-hidden', 'true'); g.style.pointerEvents = 'none';
-      sb.after(g);
-      anim(g, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
-      anim(g.firstElementChild, [{ opacity: 1, transform: 'none' }, sheetFrom()], { duration: 300, easing: 'ease-in', fill: 'forwards' });
-      setTimeout(() => g.remove(), 320);
-    }
-    open = !sb.hidden;
-  }, { attributes: true, attributeFilter: ['hidden'] });
+  ['sheetBackdrop', 'addBackdrop'].forEach(id => {
+    const sb = $(id); if (!sb) return;
+    let open = !sb.hidden;
+    watch(sb, () => {
+      if (!sb.hidden && !open) {
+        anim(sb, [{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
+        anim(sb.firstElementChild, [sheetFrom(), { opacity: 1, transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.2,.9,.25,1)' });
+      } else if (sb.hidden && open && !still()) {
+        // Окно уже скрыто, поэтому анимируем его копию и удаляем после окончания
+        const g = sb.cloneNode(true);
+        g.hidden = false; g.removeAttribute('id');
+        g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+        g.inert = true; g.setAttribute('aria-hidden', 'true'); g.style.pointerEvents = 'none';
+        sb.after(g);
+        anim(g, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
+        anim(g.firstElementChild, [{ opacity: 1, transform: 'none' }, sheetFrom()], { duration: 300, easing: 'ease-in', fill: 'forwards' });
+        setTimeout(() => g.remove(), 320);
+      }
+      open = !sb.hidden;
+    }, { attributes: true, attributeFilter: ['hidden'] });
+  });
 
   // 9. Смена темы или цвета: плавный переход, пятна фона не «щёлкают»
   const root = document.documentElement, bg = document.querySelector('.bg');
