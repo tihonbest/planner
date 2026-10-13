@@ -1252,5 +1252,188 @@ try {
   setInterval(fetchWeather, 30 * 60 * 1000);   // обновлять погоду раз в полчаса
 })();
 </script>
+<style>
+/* ===== Анимации ===== */
+@keyframes a-rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes a-fade{from{opacity:0}}
+.wrap>*{animation:a-rise .65s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--n,0)*70ms)}
+.wrap>:nth-child(2){--n:1}.wrap>:nth-child(3){--n:2}.wrap>:nth-child(4){--n:3}.wrap>:nth-child(5){--n:4}.wrap>:nth-child(n+6){--n:5}
+html.a-ready .wrap>*{animation-delay:0s}
+#empty,#result,#weather:not([hidden]){animation:a-fade .4s ease backwards}
+
+/* Плашка выбранного дня (сама плавно переезжает через JS) */
+.tabs{isolation:isolate}
+.tabs .tab{position:relative;transition:transform .15s}
+.tabs .tab:active{transform:scale(.92)}
+.tabs .tab.active{background:transparent;box-shadow:none}
+.tabs .tab.active::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:20px;background:var(--thumb);box-shadow:0 2px 10px var(--shadow),inset 0 1px 0 var(--hi)}
+
+/* Нажатия и мелкие переходы */
+.wbar{transition:transform .15s,background .2s}.wbar:active{transform:scale(.94)}
+.wfill{transform-origin:50% 100%}
+.icon-btn{transition:transform .15s,color .2s,background .2s}.icon-btn:active{transform:scale(.85)}
+.center .num{transition:color .4s}
+.swatch .dot{transition:box-shadow .25s,transform .25s}
+.swatch:active .dot{transform:scale(.9)}
+.swatch[aria-checked="true"] .dot{transform:scale(1.08)}
+
+/* Плавная смена темы и цвета */
+html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:background-color .45s,color .45s,border-color .45s,box-shadow .45s,fill .45s,stroke .45s!important}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important;transition-delay:0s!important}}
+</style>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const mq = matchMedia('(prefers-reduced-motion: reduce)'), still = () => mq.matches;
+  // Обёртка над Web Animations API: ничего не делает, если анимации отключены в системе
+  const anim = (n, k, o) => {
+    if (!n || !n.animate || still()) return null;
+    try { return n.animate(k, Object.assign({ duration: 450, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }, o)); }
+    catch (e) { return null; }
+  };
+  // Следит за изменениями узла: сначала разовый вызов, потом наблюдатель
+  const watch = (n, f, o) => {
+    if (!n) return null;
+    f();
+    const mo = new MutationObserver(f);
+    mo.observe(n, o || { childList: true });
+    return mo;
+  };
+  const slideIn = [{ opacity: 0, transform: 'translateX(-14px)' }, { opacity: 1, transform: 'none' }];
+  const dropIn = [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }];
+
+  setTimeout(() => document.documentElement.classList.add('a-ready'), 1400);
+
+  // 1. Плашка выбранного дня плавно переезжает на новый день
+  const tabs = $('tabs'); let prev = -1;
+  watch(tabs, () => {
+    const t = [...tabs.children], i = t.findIndex(x => x.classList.contains('active'));
+    if (i < 0) return;
+    if (prev >= 0 && prev !== i) {
+      anim(t[i], [{ transform: 'translateX(' + (t[prev].offsetLeft - t[i].offsetLeft) + 'px)' }, { transform: 'none' }],
+        { duration: 480, easing: 'cubic-bezier(.3,1.25,.5,1)', pseudoElement: '::before' });
+    }
+    prev = i;
+  });
+
+  // 2. Коэффициент дня «накручивается» до нового значения
+  const k = $('k'); let shown = 0, raf = 0, kmo = null;
+  kmo = watch(k, () => {
+    const to = parseFloat(k.textContent.replace(',', '.'));
+    if (isNaN(to)) return;
+    cancelAnimationFrame(raf);
+    if (still() || to === shown) { shown = to; return; }
+    const from = shown, t0 = performance.now();
+    const step = now => {
+      const p = Math.min(1, (now - t0) / 800);
+      shown = p < 1 ? from + (to - from) * (1 - Math.pow(1 - p, 3)) : to;
+      k.textContent = shown.toFixed(1).replace('.', ',');
+      if (kmo) kmo.takeRecords();   // свои записи не считаем изменением
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    step(t0);
+  }, { childList: true, characterData: true, subtree: true });
+
+  // 3. Кольцо диаграммы последовательно «дорисовывается» по секторам
+  const pie = $('pie'); let pieSig = '';
+  watch(pie, () => {
+    const c = [...pie.children];
+    const sig = c.map(x => ['stroke-dasharray', 'stroke-dashoffset', 'stroke'].map(a => x.getAttribute(a)).join()).join('|');
+    if (sig === pieSig) return;   // перерисовка без изменений (например, обновилась погода) — не повторяем
+    pieSig = sig;
+    c.slice(1).forEach(x => {
+      const to = x.getAttribute('stroke-dasharray'), p = parseFloat(to), off = 25 - parseFloat(x.getAttribute('stroke-dashoffset'));
+      anim(x, [{ strokeDasharray: '0 100' }, { strokeDasharray: to }], { duration: Math.max(80, p / 100 * 900), delay: off / 100 * 900, easing: 'linear' });
+    });
+  });
+
+  // 4. Список дел: строки выезжают по очереди (при добавлении — только новая), при удалении уезжают
+  const list = $('list'); let pl = [];
+  watch(list, () => {
+    const cur = [$('dayTitle').textContent].concat([...list.children].map(r =>
+      ((r.querySelector('.t') || {}).textContent || '') + '|' + ((r.querySelector('.pill') || {}).textContent || '')));
+    const same = cur.length === pl.length && cur.every((x, i) => x === pl[i]);
+    const keep = !same && cur.length > pl.length && pl.every((x, i) => x === cur[i]) ? Math.max(0, pl.length - 1) : 0;
+    if (!same) [...list.children].forEach((r, i) => { if (i >= keep) anim(r, slideIn, { delay: Math.min(i - keep, 8) * 50, duration: 420 }); });
+    pl = cur;
+  });
+  list.addEventListener('click', e => {
+    const b = e.target.closest('button[data-i]');
+    if (!b || b.dataset.go || still()) return;
+    e.stopPropagation();   // сначала анимация, потом штатное удаление
+    b.disabled = true;
+    const a = anim(b.closest('.row'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(32px)' }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+    const go = () => { b.disabled = false; b.dataset.go = '1'; b.click(); };
+    if (a) a.onfinish = go; else go();
+  }, true);
+
+  // 5. Столбики недели вырастают, когда меняются данные
+  let ws = '';
+  watch($('weekBars'), () => {
+    const f = [...document.querySelectorAll('#weekBars .wfill')], s = f.map(x => x.className + x.style.height).join();
+    if (s === ws) return;
+    ws = s;
+    f.forEach((x, i) => anim(x, [{ transform: 'scaleY(0)' }, { transform: 'none' }], { duration: 700, delay: i * 50 }));
+  });
+
+  // 6. Подсказки и сообщения мягко появляются
+  ['hints', 'weekHints'].forEach(id => {
+    const h = $(id); let s = '';
+    watch(h, () => {
+      const t = h.textContent;
+      if (t === s) return;
+      s = t;
+      [...h.children].forEach((c, i) => anim(c, dropIn, { duration: 380, delay: i * 70 }));
+    });
+  });
+  const io = $('ioMsg');
+  watch(io, () => { if (io.textContent) anim(io, dropIn, { duration: 300 }); });
+
+  // 7. Ошибка в форме: поле «потряхивает»
+  const er = $('error');
+  watch(er, () => {
+    if (!er.textContent) return;
+    anim($('min'), [{ transform: 'none' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(-4px)' }, { transform: 'none' }], { duration: 380, easing: 'ease-in-out' });
+    anim(er, dropIn, { duration: 280 });
+  });
+
+  // 8. Окно настроек: выезжает снизу (на широком экране — всплывает) и так же закрывается
+  const sb = $('sheetBackdrop'), wide = matchMedia('(min-width:700px)'); let open = !sb.hidden;
+  const sheetFrom = () => wide.matches ? { opacity: 0, transform: 'translateY(18px) scale(.96)' } : { transform: 'translateY(100%)' };
+  watch(sb, () => {
+    if (!sb.hidden && !open) {
+      anim(sb, [{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
+      anim(sb.firstElementChild, [sheetFrom(), { opacity: 1, transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.2,.9,.25,1)' });
+    } else if (sb.hidden && open && !still()) {
+      // Окно уже скрыто, поэтому анимируем его копию и удаляем после окончания
+      const g = sb.cloneNode(true);
+      g.hidden = false; g.removeAttribute('id');
+      g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      g.inert = true; g.setAttribute('aria-hidden', 'true'); g.style.pointerEvents = 'none';
+      sb.after(g);
+      anim(g, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
+      anim(g.firstElementChild, [{ opacity: 1, transform: 'none' }, sheetFrom()], { duration: 300, easing: 'ease-in', fill: 'forwards' });
+      setTimeout(() => g.remove(), 320);
+    }
+    open = !sb.hidden;
+  }, { attributes: true, attributeFilter: ['hidden'] });
+
+  // 9. Смена темы или цвета: плавный переход, пятна фона не «щёлкают»
+  const root = document.documentElement, bg = document.querySelector('.bg');
+  const tv = () => (root.getAttribute('data-theme') || '') + '|' + root.getAttribute('data-accent');
+  let lt = tv(), tt = 0;
+  new MutationObserver(() => {
+    const v = tv();
+    if (v === lt || still()) { lt = v; return; }
+    lt = v;
+    root.classList.add('a-theme');
+    anim(bg, [{ opacity: .2 }, { opacity: 1 }], { duration: 600 });
+    clearTimeout(tt);
+    tt = setTimeout(() => root.classList.remove('a-theme'), 600);
+  }).observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+})();
+</script>
 </body>
 </html>
