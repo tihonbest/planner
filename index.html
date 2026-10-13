@@ -305,6 +305,17 @@
   .switch::after { content:''; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .2s; }
   .switch[aria-checked="true"] { background:var(--accent); }
   .switch[aria-checked="true"]::after { transform:translateX(20px); }
+
+  /* ===== Компактный режим: меньше отступов, больше помещается на экране ===== */
+  :root[data-compact] .wrap { padding-top:12px; padding-bottom:32px; }
+  :root[data-compact] h1 { font-size:1.5rem; }
+  :root[data-compact] .sub { display:none; }
+  :root[data-compact] .card { padding:14px; margin-bottom:12px; }
+  :root[data-compact] .donut { width:clamp(140px, 44vw, 190px); margin:2px auto 8px; }
+  :root[data-compact] .meta { margin-top:8px; padding-top:8px; }
+  :root[data-compact] .row { padding:0; }
+  :root[data-compact] .topline, :root[data-compact] .add-btn { margin-bottom:10px; }
+  :root[data-compact] .wbar .wtrack { height:64px; }
 </style>
 <script>
 /* Применяем тему и цвет до отрисовки страницы, чтобы не было мигания */
@@ -313,6 +324,7 @@ try {
   if (st) {
     if (st.theme === 'light' || st.theme === 'dark') { root.setAttribute('data-theme', st.theme); root.style.colorScheme = st.theme; }
     if (['blue', 'teal', 'green', 'orange', 'pink', 'purple', 'indigo', 'graphite'].indexOf(st.accent) > -1) root.setAttribute('data-accent', st.accent);
+    if (st.compact === true) root.setAttribute('data-compact', '');
   }
 } catch (e) {}
 </script>
@@ -393,11 +405,11 @@ try {
         <label for="name">Название</label>
         <input id="name" type="text" maxlength="40" placeholder="Например, Математика">
       </div>
-      <div>
+      <div id="typeWrap" class="full">
         <label for="type">Что это</label>
         <select id="type"><option>Урок</option><option>Кружок</option><option>Домашка</option></select>
       </div>
-      <div>
+      <div id="minWrap" hidden>
         <label for="min">Длительность, мин</label>
         <input id="min" type="number" inputmode="numeric" min="5" max="600" value="45">
       </div>
@@ -425,6 +437,24 @@ try {
       <div class="set-row"><span class="set-label">Тема</span><div class="seg" id="segTheme" role="radiogroup" aria-label="Тема"></div></div>
       <div class="set-row"><span class="set-label">Цвет</span><div class="swatches" id="swatches" role="radiogroup" aria-label="Цветовая тема"></div></div>
       <p class="set-help">«Авто» подстраивается под тему устройства.</p>
+    </div>
+
+    <div class="set-group">
+      <h3>Экран</h3>
+      <div class="set-row inline"><span class="set-label">Компактный режим</span><button type="button" class="switch" id="swCompact" role="switch" aria-checked="false" aria-label="Компактный режим"></button></div>
+      <div class="set-row inline"><span class="set-label">Показывать «Неделю целиком»</span><button type="button" class="switch" id="swWeek" role="switch" aria-checked="true" aria-label="Показывать неделю целиком"></button></div>
+      <div class="set-row inline"><span class="set-label">Показывать подсказки</span><button type="button" class="switch" id="swHints" role="switch" aria-checked="true" aria-label="Показывать подсказки"></button></div>
+      <p class="set-help">Компактный режим уменьшает отступы и диаграмму, чтобы на экране помещалось больше. Подсказки — это советы под диаграммой дня и обзором недели.</p>
+    </div>
+
+    <div class="set-group">
+      <h3>Добавление дел</h3>
+      <div class="set-row inline"><span class="set-label">Закрывать окно после добавления</span><button type="button" class="switch" id="swClose" role="switch" aria-checked="false" aria-label="Закрывать окно после добавления"></button></div>
+      <div class="sleep-grid">
+        <div><label class="set-label" for="lessonMin">Урок, мин</label><input id="lessonMin" type="number" inputmode="numeric" min="20" max="180" value="45"></div>
+        <div><label class="set-label" for="hwMin">Домашка, мин</label><input id="hwMin" type="number" inputmode="numeric" min="5" max="240" value="60"></div>
+      </div>
+      <p class="set-help">Это время подставляется само, когда вы добавляете урок или домашку, поэтому в форме его вводить не нужно. Длительность кружка вводится вручную. Уже добавленные дела не меняются.</p>
     </div>
 
     <div class="set-group">
@@ -487,7 +517,9 @@ try {
 
   // ---------- Настройки ----------
   const SETTINGS_KEY = 'schedule-settings-v1';
-  const DEFAULTS = { theme: 'auto', accent: 'blue', city: 'spb', weather: true, strict: 'normal', sleep: true, age: null, bed: '23:00', wake: '07:00' };
+  const DEFAULTS = { theme: 'auto', accent: 'blue', city: 'spb', weather: true, strict: 'normal', sleep: true, age: null, bed: '23:00', wake: '07:00',
+    lesson: 45, homework: 60, autoClose: false, compact: false, showWeek: true, showHints: true };
+  const LESSON_RANGE = [20, 180], HW_RANGE = [5, 240];   // допустимое время урока и домашки по умолчанию, минуты
   const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
   const CITIES = {
     spb: { name: 'Санкт-Петербург', lat: 59.9386, lon: 30.3141 },
@@ -567,6 +599,9 @@ try {
         if (Number.isInteger(v.age) && v.age >= 6 && v.age <= 99) s.age = v.age;
         if (TIME_RE.test(v.bed)) s.bed = v.bed;
         if (TIME_RE.test(v.wake)) s.wake = v.wake;
+        if (Number.isInteger(v.lesson) && v.lesson >= LESSON_RANGE[0] && v.lesson <= LESSON_RANGE[1]) s.lesson = v.lesson;
+        if (Number.isInteger(v.homework) && v.homework >= HW_RANGE[0] && v.homework <= HW_RANGE[1]) s.homework = v.homework;
+        ['autoClose', 'compact', 'showWeek', 'showHints'].forEach(k => { if (typeof v[k] === 'boolean') s[k] = v[k]; });
       }
     } catch (e) { /* настроек нет или хранилище недоступно: берём стандартные */ }
     return s;
@@ -774,8 +809,8 @@ try {
   function renderWeek() {
     const card = $('weekCard');
     const w = weekSummary();
-    card.hidden = !w;
-    if (!w) return;
+    card.hidden = !w || !settings.showWeek;
+    if (card.hidden) return;
 
     const bars = $('weekBars');
     bars.textContent = '';
@@ -808,6 +843,7 @@ try {
 
     const hints = $('weekHints');
     hints.textContent = '';
+    if (!settings.showHints) return;
     if (w.allHeavy) {
       hints.appendChild(el('div', 'hint', 'Все дни недели тяжёлые: отдыхать почти некогда. Проверьте, что можно убрать или сдвинуть.'));
     }
@@ -866,20 +902,22 @@ try {
     // Подсказки: тяжёлый завтрашний день и риск для сна
     const hints = $('hints');
     hints.textContent = '';
-    const next = stats(days[(sel + 1) % 7], (sel + 1) % 7);
-    if (days[(sel + 1) % 7].length && next.k >= 7 && s.k < 7) {
-      hints.appendChild(el('div', 'hint', 'Завтра тяжёлый день (' + fmt(next.k) + '): сделайте часть уроков заранее, сегодня.'));
-    }
-    const w = dayWeather(sel);
-    if (w && w.mult > 1) {
-      hints.appendChild(el('div', 'hint', 'Погода (' + w.text + ') увеличила нагрузку дня на ' + Math.round((w.mult - 1) * 100) + '%.'));
-    }
-    const sl = sleepInfo();
-    if (sl && sl.deficit > 0) {
-      hints.appendChild(el('div', 'hint', 'Недосып: вы спите ' + fmtDur(sl.dur) + ', а для вашего возраста нужно ' + sl.lo + '–' + sl.hi + ' часов. Нагрузка дня увеличена на ' + Math.round((sl.mult - 1) * 100) + '%.'));
-    }
-    if (s.hours > 9) {
-      hints.appendChild(el('div', 'hint', 'Занято больше 9 часов. Следите, чтобы хватило времени на сон (' + sleepNormText() + ' часов).'));
+    if (settings.showHints) {
+      const next = stats(days[(sel + 1) % 7], (sel + 1) % 7);
+      if (days[(sel + 1) % 7].length && next.k >= 7 && s.k < 7) {
+        hints.appendChild(el('div', 'hint', 'Завтра тяжёлый день (' + fmt(next.k) + '): сделайте часть уроков заранее, сегодня.'));
+      }
+      const w = dayWeather(sel);
+      if (w && w.mult > 1) {
+        hints.appendChild(el('div', 'hint', 'Погода (' + w.text + ') увеличила нагрузку дня на ' + Math.round((w.mult - 1) * 100) + '%.'));
+      }
+      const sl = sleepInfo();
+      if (sl && sl.deficit > 0) {
+        hints.appendChild(el('div', 'hint', 'Недосып: вы спите ' + fmtDur(sl.dur) + ', а для вашего возраста нужно ' + sl.lo + '–' + sl.hi + ' часов. Нагрузка дня увеличена на ' + Math.round((sl.mult - 1) * 100) + '%.'));
+      }
+      if (s.hours > 9) {
+        hints.appendChild(el('div', 'hint', 'Занято больше 9 часов. Следите, чтобы хватило времени на сон (' + sleepNormText() + ' часов).'));
+      }
     }
 
     renderPie(items, s.load);
@@ -915,21 +953,36 @@ try {
   [nameEl, minEl].forEach(x => x.addEventListener('input', () => { errorEl.textContent = ''; }));
 
   // Добавление в выбранный день
+  // Урок и домашка берут время из настроек (поле длительности скрыто), у кружка оно вводится вручную
+  const hasOwnTime = () => typeEl.value === 'Кружок';
+  function syncType() {
+    const own = hasOwnTime();
+    $('minWrap').hidden = !own;
+    $('typeWrap').classList.toggle('full', !own);
+    errorEl.textContent = '';
+  }
+  typeEl.addEventListener('change', syncType);
+
   form.addEventListener('submit', e => {
     e.preventDefault();
-    const m = Number(minEl.value);
-    if (!Number.isInteger(m) || m < 5 || m > 600) {
-      errorEl.textContent = 'Длительность — целое число минут от 5 до 600.';
-      minEl.focus();
-      return;
+    const t = typeEl.value;
+    let m = t === 'Урок' ? settings.lesson : settings.homework;
+    if (hasOwnTime()) {
+      m = Number(minEl.value);
+      if (!Number.isInteger(m) || m < 5 || m > 600) {
+        errorEl.textContent = 'Длительность — целое число минут от 5 до 600.';
+        minEl.focus();
+        return;
+      }
     }
-    const t = typeEl.value, added = nameEl.value.trim() || t;
+    const added = nameEl.value.trim() || t;
     days[sel].push({ t, n: added, d: Number(diffEl.value), m });
     save();
     errorEl.textContent = '';
     nameEl.value = '';
-    nameEl.focus();
     render();
+    if (settings.autoClose) { closeAdd(); return; }
+    nameEl.focus();
     $('addOk').textContent = 'Добавлено в день «' + FULL[sel] + '»: ' + added + '. Дел в этот день: ' + days[sel].length + '.';
   });
 
@@ -1000,7 +1053,7 @@ try {
 
   // Пример недели, чтобы сразу увидеть, как всё работает
   $('sample').addEventListener('click', () => {
-    const U = (n, d, m = 45) => ({ t: 'Урок', n, d, m });
+    const U = (n, d, m = settings.lesson) => ({ t: 'Урок', n, d, m });
     const K = (n, d, m) => ({ t: 'Кружок', n, d, m });
     const H = (d, m) => ({ t: 'Домашка', n: 'Домашнее задание', d, m });
     days = [
@@ -1166,6 +1219,7 @@ try {
     if (settings.theme === 'auto') { r.removeAttribute('data-theme'); r.style.colorScheme = ''; }
     else { r.setAttribute('data-theme', settings.theme); r.style.colorScheme = settings.theme; }
     r.setAttribute('data-accent', settings.accent);
+    if (settings.compact) r.setAttribute('data-compact', ''); else r.removeAttribute('data-compact');
     updatePalette();
   }
   // После смены города или переключателя погоды: берём сохранённую погоду нового города и запрашиваем свежую
@@ -1206,6 +1260,16 @@ try {
     });
     $('swWeather').addEventListener('click', () => setSetting('weather', !settings.weather));
     $('swSleep').addEventListener('click', () => setSetting('sleep', !settings.sleep));
+    [['swCompact', 'compact'], ['swWeek', 'showWeek'], ['swHints', 'showHints'], ['swClose', 'autoClose']].forEach(([id, key]) => {
+      $(id).addEventListener('click', () => setSetting(key, !settings[key]));
+    });
+    [['lessonMin', 'lesson', LESSON_RANGE], ['hwMin', 'homework', HW_RANGE]].forEach(([id, key, range]) => {
+      $(id).addEventListener('input', () => {
+        const v = Number($(id).value);
+        if (Number.isInteger(v) && v >= range[0] && v <= range[1]) setSetting(key, v);
+      });
+      $(id).addEventListener('change', syncDurInputs);   // ушли из поля с неверным числом: вернуть сохранённое значение
+    });
     ['input', 'change'].forEach(ev => {
       $('age').addEventListener(ev, () => {
         const v = Number($('age').value);
@@ -1222,6 +1286,10 @@ try {
     $('age').value = settings.age === null ? '' : settings.age;
     $('bed').value = settings.bed;
     $('wake').value = settings.wake;
+  }
+  function syncDurInputs() {
+    $('lessonMin').value = settings.lesson;
+    $('hwMin').value = settings.homework;
   }
   function renderSleepInfo() {
     const box = $('sleepInfo');
@@ -1241,6 +1309,7 @@ try {
     $('swWeather').setAttribute('aria-checked', String(settings.weather));
     $('rowCity').hidden = !settings.weather;
     $('swSleep').setAttribute('aria-checked', String(settings.sleep));
+    [['swCompact', 'compact'], ['swWeek', 'showWeek'], ['swHints', 'showHints'], ['swClose', 'autoClose']].forEach(([id, key]) => $(id).setAttribute('aria-checked', String(settings[key])));
     $('rowSleep').hidden = !settings.sleep;
     renderSleepInfo();
     $('strictHelp').textContent = STRICT_HELP[settings.strict];
@@ -1283,12 +1352,13 @@ try {
 
   // Настройки, изменённые в другой вкладке, применяются и здесь
   window.addEventListener('storage', e => {
-    if (e.key === SETTINGS_KEY) { settings = loadSettings(); applySettings(); syncSleepInputs(); renderSettings(); weatherReset(); }
+    if (e.key === SETTINGS_KEY) { settings = loadSettings(); applySettings(); syncSleepInputs(); syncDurInputs(); renderSettings(); weatherReset(); }
   });
 
   buildSettings();
   applySettings();
   syncSleepInputs();
+  syncDurInputs();
   renderSettings();
 
   // Если сайт открыт в двух вкладках, изменения из одной появляются в другой
@@ -1491,3 +1561,4 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 </script>
 </body>
 </html>
+
