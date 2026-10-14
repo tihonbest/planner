@@ -1671,6 +1671,20 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   }
 })();
 </script>
+
+<script>
+/* Регистрация офлайн-кэша. Сайт должен открываться по HTTPS. */
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(function (error) {
+        console.warn('Не удалось включить офлайн-режим:', error);
+      });
+  });
+})();
+</script>
+
 </body>
 </html>
 
