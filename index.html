@@ -308,6 +308,9 @@
   .sleep-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 4px; }
   .sheet input[type=number], .sheet input[type=time] { width:100%; min-height:46px; padding:10px 14px; border:0; border-radius:14px; background:var(--fill); color:var(--text); font:inherit; }
   .sheet input[type=time]::-webkit-date-and-time-value { text-align:left; }
+  .language-control { display:flex; align-items:center; gap:9px; font-size:.9rem; }
+  .language-control span { color:var(--muted); transition:color .2s,font-weight .2s; }
+  html[data-language="ru"] #langRu, html[data-language="en"] #langEn { color:var(--text); font-weight:700; }
   .switch { position:relative; flex:none; width:51px; height:31px; padding:0; border:0; border-radius:999px; background:var(--fill); cursor:pointer; transition:background .2s; }
   .switch::after { content:''; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .2s; }
   .switch[aria-checked="true"] { background:var(--accent); }
@@ -471,6 +474,10 @@ try {
       <h3>Внешний вид</h3>
       <div class="set-row"><span class="set-label">Тема</span><div class="seg" id="segTheme" role="radiogroup" aria-label="Тема"></div></div>
       <div class="set-row"><span class="set-label">Цвет</span><div class="swatches" id="swatches" role="radiogroup" aria-label="Цветовая тема"></div></div>
+      <div class="set-row inline">
+        <span class="set-label" id="languageLabel">Язык</span>
+        <div class="language-control"><span id="langRu">RU</span><button type="button" class="switch" id="langSwitch" role="switch" aria-checked="false" aria-label="Язык интерфейса: русский"></button><span id="langEn">EN</span></div>
+      </div>
       <p class="set-help">«Авто» подстраивается под тему устройства.</p>
     </div>
 
@@ -1668,6 +1675,167 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
         document.body.appendChild(hint);
       }
     } catch (e) {}
+  }
+})();
+</script>
+
+<script>
+/* Русский / English. Язык хранится отдельно от настроек расписания. */
+(function () {
+  'use strict';
+  var KEY = 'planner-language-v1';
+  var lang = 'ru';
+  try { lang = localStorage.getItem(KEY) === 'en' ? 'en' : 'ru'; } catch (e) {}
+  var root = document.documentElement;
+  var sourceText = new WeakMap();
+  var renderedText = new WeakMap();
+  var sourceAttr = new WeakMap();
+  var renderedAttr = new WeakMap();
+
+  var DICT = {
+    'Индикатор сложности расписания':'Schedule Difficulty Indicator',
+    'Добавьте уроки, кружки и домашку — получите коэффициент сложности дня.':'Add lessons, activities, and homework to calculate your day’s difficulty score.',
+    'Настройки':'Settings','Добавить дело':'Add task','День':'Day','Очистить день':'Clear day',
+    'В этом дне пока ничего нет. Нажмите «Добавить дело».':'Nothing planned for this day yet. Tap “Add task”.',
+    'Заполнить примером недели':'Fill with sample week','Круговая диаграмма нагрузки дня':'Daily workload pie chart',
+    'коэффициент дня из 10':'Daily score out of 10','часов занято':'hours scheduled','средняя сложность':'average difficulty',
+    'Из чего состоит день':'Daily breakdown','Неделя целиком':'Whole week','Добавить дело':'Add task','Готово':'Done',
+    'Название':'Name','Например, Математика':'e.g. Mathematics','Что это':'Task type','Урок':'Lesson','Кружок':'Activity','Домашка':'Homework',
+    'Длительность, мин':'Duration, min','Сложность:':'Difficulty:','Добавить в день':'Add to day','Точно очистить?':'Clear this day?',
+    'Внешний вид':'Appearance','Тема':'Theme','Цвет':'Accent color','«Авто» подстраивается под тему устройства.':'“Auto” follows your device’s appearance.',
+    'Язык':'Language','Язык интерфейса: русский':'Interface language: Russian','Цветовая тема':'Accent color','День недели':'Day of week','Экран':'Display','Компактный режим':'Compact mode','Показывать «Неделю целиком»':'Show “Whole week”',
+    'Показывать подсказки':'Show tips','Компактный режим уменьшает отступы и диаграмму, чтобы на экране помещалось больше. Подсказки — это советы под диаграммой дня и обзором недели.':'Compact mode reduces spacing and chart size so more fits on screen. Tips appear below the daily chart and weekly overview.',
+    'Добавление дел':'Adding tasks','Закрывать окно после добавления':'Close the window after adding a task','Урок, мин':'Lesson, min','Домашка, мин':'Homework, min',
+    'Это время подставляется само, когда вы добавляете урок или домашку, поэтому в форме его вводить не нужно. Длительность кружка вводится вручную. Уже добавленные дела не меняются.':'These durations are filled in automatically when you add a lesson or homework, so you do not need to enter them in the form. Activity duration is entered manually. Existing tasks are not changed.',
+    'Погода':'Weather','Учитывать погоду':'Include weather','Город':'City',
+    'Плохая погода увеличивает нагрузку дня: туман и морось ×1,05, дождь и снег ×1,1, сильный дождь и снег ×1,15, гроза ×1,25. Ясная и облачная погода не влияет. Данные:':'Bad weather increases the day’s workload: fog and drizzle ×1.05, rain and snow ×1.1, heavy rain and snow ×1.15, thunderstorms ×1.25. Clear and cloudy weather have no effect. Data:',
+    'Сон':'Sleep','Учитывать сон':'Include sleep','Возраст':'Age','Например, 14':'e.g. 14','Ложусь спать':'Bedtime','Встаю':'Wake-up time',
+    'Нормы сна (Национальный фонд сна, США): 6–13 лет 9–11 часов, 14–17 лет 8–10, 18–64 года 7–9, от 65 лет 7–8. Если сна меньше нормы, нагрузка каждого дня растёт на 10% за каждый недостающий час (максимум на 30%). Это общие рекомендации, а не медицинский совет.':'Sleep recommendations (National Sleep Foundation, US): ages 6–13: 9–11 hours; 14–17: 8–10; 18–64: 7–9; 65+: 7–8. If you sleep less than recommended, each day’s workload increases by 10% per missing hour (up to 30%). These are general recommendations, not medical advice.',
+    'Расчёт':'Calculation','Строгость оценки':'Scoring strictness','Данные':'Data','Экспорт в CSV':'Export CSV','Импорт из CSV':'Import CSV',
+    'Заменить текущее':'Replace current schedule','Вставить CSV текстом':'Paste CSV as text','Скачать':'Download','Удалить всё расписание':'Delete entire schedule',
+    'Авто':'Auto','Светлая':'Light','Тёмная':'Dark','Синий':'Blue','Бирюзовый':'Teal','Зелёный':'Green','Оранжевый':'Orange','Розовый':'Pink','Фиолетовый':'Purple','Индиго':'Indigo','Графит':'Graphite',
+    'Мягкая':'Relaxed','Обычная':'Normal','Строгая':'Strict','Санкт-Петербург':'Saint Petersburg','Москва':'Moscow',
+    'Пн':'Mon','Вт':'Tue','Ср':'Wed','Чт':'Thu','Пт':'Fri','Сб':'Sat','Вс':'Sun',
+    'Понедельник':'Monday','Вторник':'Tuesday','Среда':'Wednesday','Четверг':'Thursday','Пятница':'Friday','Суббота':'Saturday','Воскресенье':'Sunday',
+    'Лёгкий день':'Light day','Можно отдохнуть: делайте уроки без спешки и займитесь тем, что нравится.':'You can take it easy: do your homework without rushing and make time for something you enjoy.',
+    'Средний день':'Moderate day','Выделите вечером время на домашку и не сдвигайте сон.':'Set aside time for homework this evening and keep your sleep schedule.',
+    'Тяжёлый день':'Demanding day','Сил уйдёт много: отдых и сон сегодня важнее новых дел.':'This day will take a lot of energy: rest and sleep matter more than adding tasks.',
+    'Повторить':'Retry','Сегодня':'Today','Загружаю погоду…':'Loading weather…','Погоду загрузить не удалось: нет интернета или сайт открыт в режиме предпросмотра. Коэффициент считается без погоды.':'Could not load weather: there is no internet connection or the site is in preview mode. The score is calculated without weather.',
+    'сейчас':'now','ясно':'clear','малооблачно':'mostly clear','облачно':'partly cloudy','пасмурно':'overcast','туман':'fog','морось':'drizzle','сильный дождь':'heavy rain','дождь':'rain','сильный снег':'heavy snow','снег':'snow','гроза':'thunderstorm','погода неизвестна':'unknown weather',
+    'на сложность не влияет':'does not affect difficulty','нагрузка дня':'daily workload',
+    'Завтра тяжёлый день':'Tomorrow is a demanding day','сделайте часть уроков заранее, сегодня.':'do some homework ahead of time today.',
+    'Недосып':'Not enough sleep','Занято больше 9 часов. Следите, чтобы хватило времени на сон':'More than 9 hours are scheduled. Make sure you have enough time to sleep',
+    'Сложность':'Difficulty','Удалить:':'Delete:','средний коэффициент':'average score','тяжёлых дней':'demanding days','часов за неделю':'hours this week',
+    'Все дни недели тяжёлые: отдыхать почти некогда. Проверьте, что можно убрать или сдвинуть.':'Every day this week is demanding, leaving little time to rest. Check what can be removed or rescheduled.',
+    'Тяжёлых дней нет: нагрузка на неделю распределена спокойно.':'There are no demanding days: the weekly workload is well balanced.',
+    'Заполните остальные дни, чтобы увидеть неделю целиком.':'Fill in the remaining days to see the full week.',
+    'Расписание и настройки хранятся только в вашем браузере на этом устройстве. Чтобы перенести расписание на другое устройство, используйте экспорт в CSV.':'Your schedule and settings are stored only in this browser on this device. To move your schedule to another device, export it to CSV.',
+    'Импортировать текст':'Import text','Дел нет':'No tasks','Коэффициент':'Score','Закрыть подсказку':'Dismiss tip',
+    'Можно добавить планер на экран «Домой» через меню «Поделиться» в Safari.':'You can add the planner to your Home Screen using the Share menu in Safari.',
+    'Расписание пустое — экспортировать нечего.':'The schedule is empty — there is nothing to export.','Сохранение отменено.':'Saving was cancelled.','Не удалось сохранить файл.':'Could not save the file.',
+    'Вставьте текст CSV в поле выше.':'Paste CSV text into the field above.','Файл слишком большой (больше 1 МБ).':'The file is too large (over 1 MB).','Не удалось прочитать файл.':'Could not read the file.',
+    'Нажмите ещё раз, чтобы удалить всё':'Tap again to delete everything','Укажите возраст от 6 до 99 лет, чтобы рассчитать норму сна.':'Enter an age from 6 to 99 to calculate the recommended sleep duration.',
+    'Время, когда вы ложитесь и встаёте, не должно совпадать.':'Bedtime and wake-up time cannot be the same.',
+    'Сна хватает, на коэффициент это не влияет.':'You are getting enough sleep; the score is not affected.'
+  };
+
+  function translateDynamic(s) {
+    var m;
+    if ((m = s.match(/^(.+), сегодня$/))) return translateDynamic(m[1]) + ', today';
+    if ((m = s.match(/^(.+): сегодня$/))) return translateDynamic(m[1]) + ': today';
+    if ((m = s.match(/^(.+), коэффициент (.+)$/))) return translateDynamic(m[1]) + ', score ' + m[2];
+    if ((m = s.match(/^(.+), дел нет$/))) return translateDynamic(m[1]) + ', no tasks';
+    if ((m = s.match(/^Тяжелее всего: (.+) \((.+)\)\. Легче всего: (.+) \((.+)\)\.$/))) return 'Heaviest day: ' + translateDynamic(m[1]) + ' (' + m[2] + '). Lightest day: ' + translateDynamic(m[3]) + ' (' + m[4] + ').';
+    if ((m = s.match(/^Тяжёлые дни идут подряд: (.+)\. Оставьте между ними время на отдых\.$/))) return 'Demanding days are consecutive: ' + m[1].split(', ').map(translateDynamic).join(', ') + '. Leave time to rest between them.';
+    if ((m = s.match(/^Часть дел из дня «(.+)» можно сделать заранее в более лёгкий день: (.+)\.$/))) return 'Some tasks from ' + translateDynamic(m[1]) + ' can be done ahead of time on a lighter day: ' + translateDynamic(m[2]) + '.';
+    if ((m = s.match(/^Не хватает (.+): нагрузка каждого дня \+(\d+)%\.$/))) return 'You are short by ' + m[1] + ': each day’s workload +' + m[2] + '%.';
+    if ((m = s.match(/^(.+): сейчас (.+), (.+)$/))) return translateDynamic(m[1]) + ': ' + m[2] + ', ' + translateDynamic(m[3]);
+    if ((m = s.match(/^(.+): (.+), нагрузка дня \+(\d+)%$/))) return translateDynamic(m[1]) + ': ' + translateDynamic(m[2]) + ', daily workload +' + m[3] + '%';
+    if ((m = s.match(/^(.+): (.+), на сложность не влияет$/))) return translateDynamic(m[1]) + ': ' + translateDynamic(m[2]) + ', does not affect difficulty';
+    if ((m = s.match(/^([^\s]+)\s+(ясно|малооблачно|облачно|пасмурно|туман|морось|сильный дождь|дождь|сильный снег|снег|гроза|погода неизвестна)$/))) return m[1] + ' ' + (DICT[m[2]] || m[2]);
+    if ((m = s.match(/^(?:(\d+) ч(?:ас(?:а|ов)?)?\s*)?(?:(\d+) мин(?:ут(?:а|ы)?)?)?$/)) && (m[1] || m[2])) return (m[1] ? m[1] + ' h ' : '') + (m[2] ? m[2] + ' min' : '').trim();
+    if ((m = s.match(/^(Урок|Кружок|Домашка) · (\d+) мин · (\d+)% нагрузки$/))) return ({'Урок':'Lesson','Кружок':'Activity','Домашка':'Homework'}[m[1]]) + ' · ' + m[2] + ' min · ' + m[3] + '% of workload';
+    if ((m = s.match(/^Завтра тяжёлый день \(([^)]+)\): (.+)$/))) return 'Tomorrow is a demanding day (' + m[1] + '): do some homework ahead of time today.';
+    if ((m = s.match(/^Погода \((.+)\) увеличила нагрузку дня на (\d+)%\.$/))) return 'Weather (' + translateDynamic(m[1]) + ') increased the day’s workload by ' + m[2] + '%.';
+    if ((m = s.match(/^Недосып: вы спите (.+), а для вашего возраста нужно (.+) часов\. Нагрузка дня увеличена на (\d+)%\.$/))) return 'Not enough sleep: you sleep ' + m[1] + ', but your age group needs ' + m[2] + ' hours. The day’s workload increased by ' + m[3] + '%.';
+    if ((m = s.match(/^Занято больше 9 часов\. Следите, чтобы хватило времени на сон \((.+) часов\)\.$/))) return 'More than 9 hours are scheduled. Make sure you have enough time to sleep (' + m[1] + ' hours).';
+    if ((m = s.match(/^Вы спите (.+)\. Норма для вашего возраста: (.+) часов\. (.+)$/))) {
+      var tail = m[3].replace(/^Не хватает (.+): нагрузка каждого дня \+(\d+)%\.$/, 'You are short by $1: each day’s workload +$2%.');
+      tail = tail.replace(/^Сна хватает, на коэффициент это не влияет\.$/, 'You are getting enough sleep; the score is not affected.');
+      return 'You sleep ' + m[1] + '. Recommended for your age: ' + m[2] + ' hours. ' + tail;
+    }
+    if ((m = s.match(/^(.+): день считается тяжёлым позже \(10 из 10 при нагрузке (\d+)\)\.$/))) return 'Relaxed: a day is considered demanding later (10/10 at a workload of ' + m[2] + ').';
+    if ((m = s.match(/^Обычная: 6 часов дел со сложностью 6 дают 10 из 10 \(нагрузка (\d+)\)\.$/))) return 'Normal: 6 hours of tasks with difficulty 6 give 10/10 (workload ' + m[1] + ').';
+    if ((m = s.match(/^Строгая: тяжёлый день наступает раньше \(10 из 10 при нагрузке (\d+)\)\.$/))) return 'Strict: a demanding day is reached sooner (10/10 at a workload of ' + m[1] + ').';
+    if ((m = s.match(/^Коэффициент дня из 10$/i))) return 'Daily score out of 10';
+    return null;
+  }
+  function translate(s) {
+    if (lang !== 'en') return s;
+    var lead=(s.match(/^\s*/) || [''])[0], trail=(s.match(/\s*$/) || [''])[0];
+    if (lead.length + trail.length < s.length) { var core=s.slice(lead.length,s.length-trail.length); if (core !== s) return lead + translate(core) + trail; }
+    if (Object.prototype.hasOwnProperty.call(DICT, s)) return DICT[s];
+    var d = translateDynamic(s);
+    if (d !== null) return d;
+    if (/^Удалить: /.test(s)) return 'Delete: ' + s.slice('Удалить: '.length);
+    if (/^Экспортировано записей: /.test(s)) return s.replace('Экспортировано записей: ', 'Exported records: ').replace(/\.$/, '.');
+    if (/^Импортировано записей: /.test(s)) return s.replace('Импортировано записей: ', 'Imported records: ').replace('пропущено строк с ошибками:', 'rows skipped due to errors:');
+    if (/^Не нашёл подходящих строк\./.test(s)) return 'No matching rows found. Required columns: Day; Type; Name; Difficulty (1–10); Minutes (5–600).';
+    return s;
+  }
+  function walk(node) {
+    if (node.nodeType === 3) {
+      var old = renderedText.get(node);
+      if (old !== undefined && node.data !== old) sourceText.set(node, node.data);
+      if (!sourceText.has(node)) sourceText.set(node, node.data);
+      var out = lang === 'en' ? translate(sourceText.get(node)) : sourceText.get(node);
+      if (node.data !== out) node.data = out;
+      renderedText.set(node, out);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var attrs = ['aria-label','title','placeholder'];
+    for (var i=0;i<attrs.length;i++) {
+      var a=attrs[i];
+      if (!node.hasAttribute(a)) continue;
+      var key=node.tagName+'|'+a;
+      var byNode=sourceAttr.get(node);
+      if (!byNode) { byNode={}; sourceAttr.set(node,byNode); }
+      var renderedByNode=renderedAttr.get(node);
+      if (!renderedByNode) { renderedByNode={}; renderedAttr.set(node,renderedByNode); }
+      if (renderedByNode[a] !== undefined && node.getAttribute(a) !== renderedByNode[a]) byNode[a]=node.getAttribute(a);
+      if (byNode[a] === undefined) byNode[a]=node.getAttribute(a);
+      var translated=lang==='en' ? translate(byNode[a]) : byNode[a];
+      if (node.getAttribute(a)!==translated) node.setAttribute(a,translated);
+      renderedByNode[a]=translated;
+    }
+    for (var c=node.firstChild;c;c=c.nextSibling) walk(c);
+  }
+  function apply() {
+    root.setAttribute('data-language',lang);
+    var btn=document.getElementById('langSwitch');
+    if (btn) {
+      btn.setAttribute('aria-checked',String(lang==='en'));
+    }
+    walk(document.body);
+    document.documentElement.lang=lang==='en'?'en':'ru';
+  }
+  var btn=document.getElementById('langSwitch');
+  if (btn) btn.addEventListener('click',function(){
+    lang=lang==='ru'?'en':'ru';
+    try { localStorage.setItem(KEY,lang); } catch(e) {}
+    apply();
+  });
+  apply();
+  if (window.MutationObserver) {
+    var observer=new MutationObserver(function(records){
+      records.forEach(function(r){
+        if (r.type==='characterData') walk(r.target);
+        else if (r.type==='attributes') walk(r.target);
+        else for (var i=0;i<r.addedNodes.length;i++) walk(r.addedNodes[i]);
+      });
+    });
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder']});
   }
 })();
 </script>
