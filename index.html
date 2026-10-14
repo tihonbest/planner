@@ -6,6 +6,11 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="./logo.jpeg" type="image/jpeg">
 <link rel="apple-touch-icon" href="./logo.jpeg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Сложность дня">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <title>Индикатор сложности расписания</title>
 <style>
   :root {
@@ -318,6 +323,34 @@
   :root[data-compact] .row { padding:0; }
   :root[data-compact] .topline, :root[data-compact] .add-btn { margin-bottom:10px; }
   :root[data-compact] .wbar .wtrack { height:64px; }
+
+  /* ===== iOS / Safari: поведение как у веб-приложения ===== */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { -webkit-tap-highlight-color: transparent; }
+  button, .tab, .gear, .icon-btn, .swatch, .switch { -webkit-tap-highlight-color: transparent; }
+  input, select, textarea, button { font-size: max(16px, 1em); }
+  input[type="range"] { touch-action: pan-y; }
+  .sheet-backdrop {
+    height: var(--ios-visual-height, 100dvh);
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+  .sheet {
+    max-height: calc(var(--ios-visual-height, 100dvh) - env(safe-area-inset-top, 0px) - 12px);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .sheet-backdrop[hidden] { display: none !important; }
+  @supports not (height: 100dvh) {
+    .sheet-backdrop { height: var(--ios-visual-height, 100vh); }
+    .sheet { max-height: calc(var(--ios-visual-height, 100vh) - env(safe-area-inset-top, 0px) - 12px); }
+  }
+  @media (hover: none) {
+    .btn:hover, .icon-btn:hover, .btn.ghost:hover { filter: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto !important; }
+  }
 </style>
 <script>
 /* Применяем тему и цвет до отрисовки страницы, чтобы не было мигания */
@@ -1559,6 +1592,83 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     clearTimeout(tt);
     tt = setTimeout(() => root.classList.remove('a-theme'), 600);
   }).observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+})();
+</script>
+<script>
+/* ===== Улучшения для iPhone/iPad без изменения логики планера ===== */
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var standalone = false;
+  try {
+    standalone = (window.navigator.standalone === true) ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  } catch (e) {}
+
+  /* Высота именно видимой области Safari: помогает окнам при открытой клавиатуре. */
+  function syncVisualViewport() {
+    try {
+      var vv = window.visualViewport;
+      var h = vv && vv.height ? vv.height : window.innerHeight;
+      if (h && isFinite(h)) root.style.setProperty('--ios-visual-height', Math.round(h) + 'px');
+    } catch (e) {}
+  }
+  syncVisualViewport();
+  window.addEventListener('resize', syncVisualViewport, { passive: true });
+  window.addEventListener('orientationchange', function () { setTimeout(syncVisualViewport, 180); }, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncVisualViewport, { passive: true });
+    window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
+  }
+
+  /* Не даём прокрутке страницы проходить сквозь затемнение, но сохраняем
+     прокрутку содержимого самого окна настроек/добавления дела. */
+  ['sheetBackdrop', 'addBackdrop'].forEach(function (id) {
+    var backdrop = document.getElementById(id);
+    if (!backdrop) return;
+    backdrop.addEventListener('touchmove', function (event) {
+      if (event.target === backdrop) event.preventDefault();
+    }, { passive: false });
+  });
+
+  /* На iOS клавиатура иногда перекрывает активное поле внутри модального окна. */
+  document.addEventListener('focusin', function (event) {
+    var target = event.target;
+    if (!target || !target.matches || !target.matches('input, select, textarea')) return;
+    setTimeout(function () {
+      try {
+        var box = target.getBoundingClientRect();
+        var visibleH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        if (box.bottom > visibleH - 18 || box.top < 8) {
+          target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      } catch (e) {}
+    }, 220);
+  });
+
+  /* Подсказка установки показывается только на втором посещении и запоминает закрытие. */
+  if (!standalone) {
+    try {
+      var dismissed = localStorage.getItem('planner-ios-install-hint-dismissed-v1') === '1';
+      var visits = parseInt(localStorage.getItem('planner-ios-visits-v1') || '0', 10);
+      if (!isFinite(visits) || visits < 0) visits = 0;
+      localStorage.setItem('planner-ios-visits-v1', String(Math.min(visits + 1, 20)));
+      if (visits >= 1 && !dismissed) {
+        var hint = document.createElement('aside');
+        hint.className = 'ios-install-hint';
+        hint.setAttribute('role', 'note');
+        hint.innerHTML = '<span>Можно добавить планер на экран «Домой» через меню «Поделиться» в Safari.</span><button type="button" aria-label="Закрыть подсказку">×</button>';
+        hint.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:100;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text);box-shadow:0 8px 30px var(--shadow);font:14px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);';
+        var close = hint.querySelector('button');
+        close.style.cssText = 'flex:none;border:0;background:transparent;color:var(--muted);font:24px/1 sans-serif;padding:0 2px;';
+        close.addEventListener('click', function () {
+          try { localStorage.setItem('planner-ios-install-hint-dismissed-v1', '1'); } catch (e) {}
+          hint.remove();
+        });
+        document.body.appendChild(hint);
+      }
+    } catch (e) {}
+  }
 })();
 </script>
 </body>
