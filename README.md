@@ -1,6 +1,9 @@
 # Индикатор сложности расписания
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tihonbest/planner/blob/main/LICENSE)
+[![Made with Vanilla JS](https://img.shields.io/badge/Made%20with-Vanilla%20JS-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blue.svg)](https://tihonbest.github.io/planner/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tihonbest/planner/blob/main/.github/CONTRIBUTING.md)
 
 **Индикатор сложности расписания** — школьный веб-планер, который помогает оценить учебную нагрузку на каждый день и распределить дела в течение недели.
 
