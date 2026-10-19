@@ -193,8 +193,8 @@ logo.jpeg    Иконка сайта, если она подключена в HT
 ## Участие в проекте
 
 Идеи, сообщения об ошибках и pull request'ы приветствуются.  
-Как внести вклад — в файле [CONTRIBUTING.md](CONTRIBUTING.md).  
-Политика безопасности — в файле [SECURITY.md](SECURITY.md).
+Как внести вклад — в файле [CONTRIBUTING.md](.github/CONTRIBUTING.md).  
+Политика безопасности — в файле [SECURITY.md](.github/SECURITY.md).
 
 ## Лицензия
 
