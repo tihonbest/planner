@@ -5,11 +5,11 @@
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-blue.svg)](https://tihonbest.github.io/planner/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tihonbest/planner/blob/main/.github/CONTRIBUTING.md)
 
+![Скриншот планера](.github/Demo_photo.png)
+
 **Индикатор сложности расписания** — школьный веб-планер, который помогает оценить учебную нагрузку на каждый день и распределить дела в течение недели.
 
 Пользователь добавляет уроки, кружки и домашние задания, указывает их длительность и сложность, а сайт рассчитывает коэффициент дня от 0 до 10, показывает диаграммы и предлагает краткие рекомендации.
-
-![Скриншот планера](.github/Demo_photo.jpg)
 
 **Открыть сайт:** https://tihonbest.github.io/planner/
 
