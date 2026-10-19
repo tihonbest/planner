@@ -1,5 +1,4 @@
 # Индикатор сложности расписания
-![Uploading image.jpeg…]()
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tihonbest/planner/blob/main/LICENSE)
 [![Made with Vanilla JS](https://img.shields.io/badge/Made%20with-Vanilla%20JS-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
