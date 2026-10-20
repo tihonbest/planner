@@ -95,7 +95,6 @@
   .weather .w-now { font-weight:600; }
   .weather .w-day { color:var(--muted); font-size:.9rem; margin-top:2px; }
   .weather .w-day.bad { color:var(--bad); }
-
 /* ===== Стиль Apple + Liquid Glass ===== */
   :root {
     --bg:#f2f2f7; --card:rgba(255,255,255,.52); --text:#1d1d1f; --muted:#6e6e73; --line:rgba(60,60,67,.14);
@@ -118,6 +117,7 @@
     --edge:rgba(255,255,255,.16); --hi:rgba(255,255,255,.22); --sheen:rgba(255,255,255,.12); --thumb:rgba(120,120,128,.55); --fill:rgba(120,120,128,.24); --shadow:rgba(0,0,0,.45);
   }
   body { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Helvetica Neue",Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  /* Цветные размытые пятна за стеклом — именно сквозь них «преломляется» фон */
   .bg { position:fixed; inset:0; z-index:0; pointer-events:none; background:
     radial-gradient(45% 35% at 12% 8%, rgba(var(--b1),.38), transparent 70%),
     radial-gradient(40% 32% at 92% 30%, rgba(var(--b2),.32), transparent 70%),
@@ -126,6 +126,7 @@
   h1 { font-size:2rem; font-weight:700; letter-spacing:-.025em; margin-bottom:2px; }
   h2 { font-weight:600; letter-spacing:-.01em; }
 
+  /* Стекло: размытие, блик сверху-слева, светлая кромка, мягкая тень */
   .card, .tabs {
     background:linear-gradient(135deg,var(--sheen),transparent 45%),var(--card);
     -webkit-backdrop-filter:blur(28px) saturate(180%); backdrop-filter:blur(28px) saturate(180%);
@@ -134,12 +135,12 @@
   }
   .card { padding:20px; }
 
+  /* Дни недели — стеклянный сегментированный переключатель, прилипает к верху */
   .tabs { position:sticky; top:calc(env(safe-area-inset-top,0px) + 8px); z-index:5; padding:4px; gap:2px; border-radius:24px; }
   .tab { background:transparent; border:0; border-radius:20px; padding:7px 0; transition:background .2s, box-shadow .2s; }
   .tab.active { background:var(--thumb); border:0; padding:7px 0; box-shadow:0 2px 10px var(--shadow), inset 0 1px 0 var(--hi); }
 
   input[type=text], input[type=number], select { background:var(--fill); border:0; border-radius:14px; padding:12px 14px; }
-  input[type=time] { width:100%; padding:10px 14px; border:0; border-radius:14px; background:var(--fill); color:var(--text); font:inherit; min-height:46px; }
 
   .btn { border-radius:999px; padding:14px 18px; transition:transform .15s, background .2s; }
   .btn:active { transform:scale(.98); }
@@ -148,6 +149,7 @@
   .btn.ghost { background:var(--fill); border:0; padding:8px 14px; }
   .btn.ghost:hover, .btn.ghost.armed { background:var(--bad-bg); color:var(--bad); }
 
+  /* Диаграмма: тоньше кольцо, мягкая тень */
   #pie { filter:drop-shadow(0 8px 16px var(--shadow)); }
   #pie circle { stroke-width:4.4; }
   #pie circle:first-child { stroke:var(--line); }
@@ -160,23 +162,28 @@
   .sw { border-radius:50%; }
   .icon-btn { border-radius:999px; }
 
+  /* Без размытия (старые браузеры или «уменьшить прозрачность») — обычные плотные панели */
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) { .card, .tabs { background:var(--bg); } }
   @media (prefers-reduced-transparency: reduce) { .card, .tabs { background:var(--bg); -webkit-backdrop-filter:none; backdrop-filter:none; } }
-
+/* ===== Адаптив: iPhone, iPad, Mac ===== */
   html { -webkit-text-size-adjust:100%; }
   button, select, input { touch-action:manipulation; }
   button { -webkit-tap-highlight-color:transparent; }
+  /* Боковые отступы учитывают «чёлку» iPhone в горизонтальном режиме */
   .wrap { padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); }
 
+  /* Диаграмма подстраивается под ширину экрана, цифра внутри — под размер круга */
   .donut { width:clamp(180px, 62vw, 250px); height:auto; aspect-ratio:1; container-type:inline-size; }
   .center .num { font-size:19cqw; }
   .center .cap { font-size:max(.7rem, 5cqw); max-width:60%; }
 
+  /* Крупные зоны нажатия для пальца */
   .icon-btn { min-width:44px; min-height:44px; }
   .btn.primary { min-height:48px; }
   input[type=text], input[type=number], select { min-height:46px; }
   .row { padding:2px 0; }
 
+  /* iPad (портрет) и большие телефоны: колонка шире */
   @media (min-width:600px) {
     .wrap { max-width:720px; padding-top:32px; padding-bottom:64px; }
     h1 { font-size:2.5rem; }
@@ -184,6 +191,7 @@
     .donut { width:clamp(220px, 40vw, 280px); }
   }
 
+  /* iPad (альбом) и Mac: две колонки — слева диаграмма дня, справа список дел */
   @media (min-width:900px) {
     .wrap { max-width:1120px; display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr); column-gap:24px; align-items:start; }
     .wrap > h1, .wrap > .sub, .wrap > .topline, .wrap > .tabs { grid-column:1 / -1; }
@@ -195,15 +203,17 @@
     .wrap > section:nth-of-type(3) { grid-column:1 / -1; grid-row:7; }
     .donut { width:clamp(240px, 24vw, 320px); }
   }
+  /* Если окно достаточно высокое, диаграмма остаётся на виду при прокрутке списка */
   @media (min-width:900px) and (min-height:720px) {
     .wrap > section:nth-of-type(1) { position:sticky; top:calc(env(safe-area-inset-top,0px) + 16px); }
   }
 
+  /* iPhone в горизонтальном режиме (мало высоты): без липких вкладок, диаграмма меньше */
   @media (max-height:520px) {
     .tabs { position:static; }
     .donut { width:150px; }
   }
-
+/* Экспорт / импорт CSV */
   .io { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:4px; padding-top:14px; border-top:1px solid var(--line); }
   .io .btn { min-height:44px; }
   .io .chk { display:flex; align-items:center; gap:6px; margin:0; font-size:.85rem; }
@@ -212,9 +222,10 @@
   details.paste { margin-top:6px; }
   details.paste summary { cursor:pointer; color:var(--muted); font-size:.9rem; min-height:32px; }
   textarea { width:100%; padding:12px 14px; font:inherit; color:var(--text); background:var(--fill); border:0; border-radius:14px; resize:vertical; margin:8px 0; }
+/* Метка «сегодня» на вкладке дня */
   .tab.today > span:first-child::after { content:''; display:inline-block; width:5px; height:5px; margin-left:4px; border-radius:50%; background:var(--accent); vertical-align:middle; }
 
-  /* ===== Цветовые темы ===== */
+  /* ===== Цветовые темы (переключаются в настройках атрибутом data-accent) ===== */
   :root { --b1:10,132,255; --b2:191,90,242; --b3:255,159,10; --glow-rgb:0,122,255; --on-accent:#fff; }
   :root[data-accent="blue"] { --accent:#007aff; --accent-hover:#0a6cdc; --on-accent:#fff; --b1:10,132,255; --b2:191,90,242; --b3:255,159,10; --glow-rgb:0,122,255; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-accent="blue"] { --accent:#0a84ff; --accent-hover:#409cff; --on-accent:#ffffff; } }
@@ -305,6 +316,7 @@
   .switch[aria-checked="true"] { background:var(--accent); }
   .switch[aria-checked="true"]::after { transform:translateX(20px); }
 
+  /* ===== Компактный режим: меньше отступов, больше помещается на экране ===== */
   :root[data-compact] .wrap { padding-top:12px; padding-bottom:32px; }
   :root[data-compact] h1 { font-size:1.5rem; }
   :root[data-compact] .sub { display:none; }
@@ -315,6 +327,7 @@
   :root[data-compact] .topline, :root[data-compact] .add-btn { margin-bottom:10px; }
   :root[data-compact] .wbar .wtrack { height:64px; }
 
+  /* ===== iOS / Safari: поведение как у веб-приложения ===== */
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body { -webkit-tap-highlight-color: transparent; }
   button, .tab, .gear, .icon-btn, .swatch, .switch { -webkit-tap-highlight-color: transparent; }
@@ -434,13 +447,10 @@ try {
         <label for="type">Что это</label>
         <select id="type"><option>Урок</option><option>Кружок</option><option>Домашка</option></select>
       </div>
-      
-      <!-- Время начала урока -->
       <div id="startTimeWrap" class="full" hidden>
         <label for="startTime">Время начала урока</label>
         <input id="startTime" type="time" required>
       </div>
-
       <div id="minWrap" hidden>
         <label for="min">Длительность, мин</label>
         <input id="min" type="number" inputmode="numeric" min="5" max="600" value="45">
@@ -555,13 +565,13 @@ try {
   const SETTINGS_KEY = 'schedule-settings-v1';
   const DEFAULTS = { theme: 'auto', accent: 'blue', city: 'spb', weather: true, strict: 'normal', sleep: true, age: null, bed: '23:00', wake: '07:00',
     lesson: 45, homework: 60, autoClose: false, compact: false, showWeek: true, showHints: true };
-  const LESSON_RANGE = [20, 180], HW_RANGE = [5, 240];
+  const LESSON_RANGE = [20, 180], HW_RANGE = [5, 240];   // допустимое время урока и домашки по умолчанию, минуты
   const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
   const CITIES = {
     spb: { name: 'Санкт-Петербург', lat: 59.9386, lon: 30.3141 },
     msk: { name: 'Москва', lat: 55.7558, lon: 37.6173 }
   };
-  const LOAD_BY = { soft: 45, normal: 36, hard: 27 };
+  const LOAD_BY = { soft: 45, normal: 36, hard: 27 };   // нагрузка дня (сложность × часы), которая даёт коэффициент 10
   const OPTIONS = {
     theme: [['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']],
     city: [['spb', 'Санкт-Петербург'], ['msk', 'Москва']],
@@ -576,7 +586,7 @@ try {
     ['purple', 'Фиолетовый', '#bf5af2', 280, 70],
     ['indigo', 'Индиго', '#5e5ce6', 241, 65],
     ['graphite', 'Графит', '#8e8e93', 0, 0]
-  ];
+  ];   // [ключ, название, цвет кружка, оттенок (0–360), насыщенность для диаграммы]
   const STRICT_HELP = {
     soft: 'Мягкая: день считается тяжёлым позже (10 из 10 при нагрузке 45).',
     normal: 'Обычная: 6 часов дел со сложностью 6 дают 10 из 10 (нагрузка 36).',
@@ -587,18 +597,19 @@ try {
 
   // ---------- Сон ----------
   const toMin = t => { const p = t.split(':'); return Number(p[0]) * 60 + Number(p[1]); };
-  function sleepNorm(age) {
+  function sleepNorm(age) {   // норма сна в часах по возрасту (рекомендации Национального фонда сна, США)
     if (age <= 13) return [9, 11];
     if (age <= 17) return [8, 10];
     if (age <= 64) return [7, 9];
     return [7, 8];
   }
+  // Сколько человек спит и чего не хватает до нормы; null, если сон не учитывается или данных мало
   function sleepInfo() {
     if (!settings.sleep || !settings.age) return null;
-    const dur = (toMin(settings.wake) - toMin(settings.bed) + 1440) % 1440;
+    const dur = (toMin(settings.wake) - toMin(settings.bed) + 1440) % 1440;   // минут (с переходом через полночь)
     if (dur === 0) return null;
     const norm = sleepNorm(settings.age);
-    const deficit = Math.max(0, norm[0] - dur / 60);
+    const deficit = Math.max(0, norm[0] - dur / 60);                          // недостающие часы до нижней границы нормы
     return { dur, lo: norm[0], hi: norm[1], deficit, mult: 1 + Math.min(0.3, deficit * 0.1) };
   }
   const sleepMult = () => { const i = sleepInfo(); return i ? i.mult : 1; };
@@ -608,6 +619,7 @@ try {
     return h && m ? h + ' ч ' + m + ' мин' : h ? h + ' ч' : m + ' мин';
   }
 
+  // Цвета диаграммы: оттенки рядом с выбранным цветом темы, разной светлоты, чтобы соседние сектора различались
   const PALETTE_SHIFT = [0, 8, -8, 16, -16, 24, -24, 32];
   const PALETTE_LIGHT = [52, 66, 40, 60, 46, 72, 34, 56];
   function updatePalette() {
@@ -637,19 +649,20 @@ try {
         if (Number.isInteger(v.homework) && v.homework >= HW_RANGE[0] && v.homework <= HW_RANGE[1]) s.homework = v.homework;
         ['autoClose', 'compact', 'showWeek', 'showHints'].forEach(k => { if (typeof v[k] === 'boolean') s[k] = v[k]; });
       }
-    } catch (e) { }
+    } catch (e) { /* настроек нет или хранилище недоступно: берём стандартные */ }
     return s;
   }
 
-  // ---------- Погода ----------
+  // ---------- Погода (Санкт-Петербург, сервис Open-Meteo, ключ не нужен) ----------
   const WEATHER_KEY = 'schedule-weather-v1';
   const weatherUrl = c => 'https://api.open-meteo.com/v1/forecast?latitude=' + c.lat + '&longitude=' + c.lon
     + '&current=temperature_2m,weather_code&daily=weather_code&timezone=Europe%2FMoscow&forecast_days=7';
-  let weather = loadWeather();
-  let weatherState = weather ? 'ok' : 'loading';
+  let weather = loadWeather();   // { t: время запроса, temp: °C сейчас, code: код сейчас, daily: { 'ГГГГ-ММ-ДД': код } }
+  let weatherState = weather ? 'ok' : 'loading';   // 'loading' | 'ok' | 'error'
   let weatherRetries = 0;
-  let weatherReq = 0;
+  let weatherReq = 0;   // номер последнего запроса: устаревшие ответы игнорируются
 
+  // Код погоды WMO → значок, название и множитель нагрузки дня (1 = не влияет)
   function weatherInfo(code) {
     if (code <= 3) return { icon: ['☀️', '🌤️', '⛅', '☁️'][code], text: ['ясно', 'малооблачно', 'облачно', 'пасмурно'][code], mult: 1 };
     if (code === 45 || code === 48) return { icon: '🌫️', text: 'туман', mult: 1.05 };
@@ -662,6 +675,7 @@ try {
     return { icon: '🌡️', text: 'погода неизвестна', mult: 1 };
   }
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  // Дата ближайшего дня недели с индексом i (сегодня или в ближайшие 6 дней)
   function dateOfDay(i) { const d = new Date(); d.setDate(d.getDate() + (i - todayIdx() + 7) % 7); return ymd(d); }
   function dayWeather(i) {
     if (!settings.weather || !weather || !weather.daily) return null;
@@ -674,8 +688,8 @@ try {
     if (!settings.weather) return null;
     try {
       const w = JSON.parse(localStorage.getItem(WEATHER_KEY + '-' + settings.city));
-      if (w && w.daily && Date.now() - w.t < 6 * 3600 * 1000) return w;
-    } catch (e) { }
+      if (w && w.daily && Date.now() - w.t < 6 * 3600 * 1000) return w;   // старше 6 часов не используем
+    } catch (e) { /* нет сохранённой погоды */ }
     return null;
   }
   function fetchWeather() {
@@ -687,15 +701,16 @@ try {
     fetch(weatherUrl(CITIES[city]), ctrl ? { signal: ctrl.signal } : undefined)
       .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(j => {
-        if (req !== weatherReq) return;
+        if (req !== weatherReq) return;   // за это время сменили город или выключили погоду
         const daily = {};
         (j.daily.time || []).forEach((d, i) => { if (typeof j.daily.weather_code[i] === 'number') daily[d] = j.daily.weather_code[i]; });
         weather = { t: Date.now(), temp: j.current.temperature_2m, code: j.current.weather_code, daily };
         weatherState = 'ok'; weatherRetries = 0;
-        try { localStorage.setItem(WEATHER_KEY + '-' + city, JSON.stringify(weather)); } catch (e) { }
+        try { localStorage.setItem(WEATHER_KEY + '-' + city, JSON.stringify(weather)); } catch (e) { /* не страшно */ }
       })
       .catch(() => {
         if (req !== weatherReq) return;
+        // нет сети: остаётся последняя сохранённая погода; если её нет, показываем ошибку и пробуем ещё раз
         if (!weather) weatherState = 'error';
         if (weatherRetries++ < 3) setTimeout(fetchWeather, 60 * 1000);
       })
@@ -703,44 +718,27 @@ try {
   }
 
   // ---------- Данные ----------
-  let days = loadDays();
-  const todayIdx = () => (new Date().getDay() + 6) % 7;
-  let sel = todayIdx();
+  let days = loadDays();                       // 7 списков: { t: тип, n: название, d: сложность, m: минуты }
+  const todayIdx = () => (new Date().getDay() + 6) % 7;   // индекс сегодняшнего дня: 0 = Пн ... 6 = Вс
+  let sel = todayIdx();     // выбранный день (по умолчанию — сегодня)
 
   function loadDays() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
       if (s && Array.isArray(s.days) && s.days.length === 7) {
-        return s.days.map(a =>
-          Array.isArray(a)
-            ? a
-                .filter(it =>
-                  it &&
-                  it.d >= 1 &&
-                  it.d <= 10 &&
-                  it.m > 0
-                )
-                .map(it => {
-                  const item = { ...it };
-                  if (
-                    item.t === 'Урок' &&
-                    TIME_RE.test(item.startTime || '')
-                  ) {
-                    const endMinutes = toMin(item.startTime) + 45;
-                    item.endTime =
-                      String(Math.floor(endMinutes / 60) % 24)
-                        .padStart(2, '0') +
-                      ':' +
-                      String(endMinutes % 60)
-                        .padStart(2, '0');
-                    item.m = 45;
-                  }
-                  return item;
-                })
-            : []
-        );
+        return s.days.map(a => Array.isArray(a) ? a
+          .filter(it => it && it.d >= 1 && it.d <= 10 && it.m > 0)
+          .map(it => {
+            const item = { ...it };
+            if (item.t === 'Урок' && TIME_RE.test(item.startTime || '')) {
+              const endMinutes = toMin(item.startTime) + 45;
+              item.endTime = String(Math.floor(endMinutes / 60) % 24).padStart(2, '0') + ':' + String(endMinutes % 60).padStart(2, '0');
+              item.m = 45;
+            }
+            return item;
+          }) : []);
       }
-    } catch (e) { }
+    } catch (e) { /* хранилище недоступно — работаем без него */ }
     return [[], [], [], [], [], [], []];
   }
   let storageOk = storageWorks();
@@ -763,46 +761,28 @@ try {
   // ---------- Элементы ----------
   const $ = id => document.getElementById(id);
   const form = $('form'), nameEl = $('name'), typeEl = $('type'), minEl = $('min'), diffEl = $('diff');
+  const startTimeEl = $('startTime');
   const errorEl = $('error');
 
   // ---------- Расчёты ----------
-  function stats(items, dayIdx) {
-    let load = 0;
-    let min = 0;
-    let dm = 0;
+  // Нагрузка элемента = сложность × часы. Коэффициент дня = нагрузка дня / порог × 10, не больше 10 (порог 36, в настройках можно сделать мягче или строже).
+  // Погода и недосып умножают нагрузку дня: ясно ×1, дождь ×1,1, гроза ×1,25, недосып до ×1,3
+  function isPassedLesson(it, dayIdx) {
+    if (dayIdx !== todayIdx() || it.t !== 'Урок' || !TIME_RE.test(it.endTime || '')) return false;
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    
-    const isToday = dayIdx === todayIdx();
-    for (const it of items) {
-      let isPassedLesson = false;
-      if (
-        isToday &&
-        it.t === 'Урок' &&
-        TIME_RE.test(it.endTime || '')
-      ) {
-        const endMinutes = toMin(it.endTime);
-        isPassedLesson = currentMinutes > endMinutes;
-      }
-      if (isPassedLesson) {
-        continue;
-      }
-      load += it.d * it.m / 60;
-      min += it.m;
-      dm += it.d * it.m;
-    }
-    const m = dayIdx === undefined
-      ? 1
-      : dayMult(dayIdx) * sleepMult();
-    return {
-      load,
-      hours: min / 60,
-      avg: min ? dm / min : 0,
-      k: Math.min(10, load * m / loadMax() * 10),
-      mult: m
-    };
+    return currentMinutes >= toMin(it.endTime);
   }
-  const kClass = k => (k < 4 ? 'good' : k < 7 ? 'warn' : 'bad');
+  function activeItems(items, dayIdx) {
+    return items.filter(it => !isPassedLesson(it, dayIdx));
+  }
+  function stats(items, dayIdx) {
+    let load = 0, min = 0, dm = 0;
+    for (const it of activeItems(items, dayIdx)) { load += it.d * it.m / 60; min += it.m; dm += it.d * it.m; }
+    const m = dayIdx === undefined ? 1 : dayMult(dayIdx) * sleepMult();
+    return { load, hours: min / 60, avg: min ? dm / min : 0, k: Math.min(10, load * m / loadMax() * 10), mult: m };
+  }
+  const kClass = k => (k < 4 ? 'good' : k < 7 ? 'warn' : 'bad');   // зелёный / жёлтый / красный
   const fmt = n => n.toFixed(1).replace('.', ',');
 
   const TEXT = {
@@ -863,6 +843,7 @@ try {
   }
 
   // ---------- Обзор недели ----------
+  // Серии тяжёлых дней подряд (неделя повторяется, поэтому воскресенье идёт перед понедельником)
   function heavyRuns(heavy) {
     if (heavy.every(Boolean)) return [];
     const runs = [];
@@ -948,13 +929,21 @@ try {
   function renderPie(items, total) {
     const svg = $('pie');
     svg.textContent = '';
+    if (!items.length || total <= 0) {
+      const c = document.createElementNS(SVG, 'circle');
+      c.setAttribute('cx', 21); c.setAttribute('cy', 21); c.setAttribute('r', 15.915);
+      c.setAttribute('fill', 'none'); c.setAttribute('stroke-width', 6);
+      c.setAttribute('stroke', 'var(--line)');
+      svg.appendChild(c);
+      return;
+    }
     const mk = (pct, off, color) => {
       const c = document.createElementNS(SVG, 'circle');
       c.setAttribute('cx', 21); c.setAttribute('cy', 21); c.setAttribute('r', 15.915);
       c.setAttribute('fill', 'none'); c.setAttribute('stroke-width', 6);
       c.setAttribute('stroke', color);
       c.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
-      c.setAttribute('stroke-dashoffset', 25 - off);
+      c.setAttribute('stroke-dashoffset', 25 - off);   // старт сверху
       return c;
     };
     svg.appendChild(mk(100, 0, 'var(--line)'));
@@ -986,6 +975,7 @@ try {
     $('hours').textContent = fmt(s.hours);
     $('avg').textContent = fmt(s.avg);
 
+    // Подсказки: тяжёлый завтрашний день и риск для сна
     const hints = $('hints');
     hints.textContent = '';
     if (settings.showHints) {
@@ -1006,33 +996,24 @@ try {
       }
     }
 
-    renderPie(items, s.load);
+    const currentItems = activeItems(items, sel);
+    renderPie(currentItems, s.load);
 
+    // Список дел: завершённые уроки остаются в расписании, но не входят в расчёт
     const list = $('list');
     list.textContent = '';
     items.forEach((it, i) => {
-      const share = Math.round(it.d * it.m / 60 / s.load * 100);
+      const passed = isPassedLesson(it, sel);
+      const share = !passed && s.load > 0 ? Math.round(it.d * it.m / 60 / s.load * 100) : 0;
       const row = el('div', 'row');
+      if (passed) row.style.opacity = '0.55';
       const sw = el('span', 'sw');
       sw.style.background = COLORS[i % COLORS.length];
       const info = el('div');
-      
-      let details;
-      if (
-        it.t === 'Урок' &&
-        TIME_RE.test(it.startTime || '') &&
-        TIME_RE.test(it.endTime || '')
-      ) {
-        details = it.startTime + '–' + it.endTime;
-      } else {
-        details = it.m + ' мин';
-      }
-
-      info.append(
-        el('div', 't', it.n),
-        el('div', 'm', it.t + ' · ' + details + ' · ' + share + '% нагрузки')
-      );
-      
+      let details = it.m + ' мин';
+      if (it.t === 'Урок' && TIME_RE.test(it.startTime || '') && TIME_RE.test(it.endTime || '')) details = it.startTime + '–' + it.endTime;
+      if (passed) details += ' · урок завершён';
+      info.append(el('div', 't', it.n), el('div', 'm', it.t + ' · ' + details + (passed ? '' : ' · ' + share + '% нагрузки')));
       const pill = el('span', 'pill ' + (it.d <= 3 ? 'good' : it.d <= 6 ? 'warn' : 'bad'), it.d);
       pill.title = 'Сложность';
       const del = el('button', 'icon-btn', '✕');
@@ -1053,6 +1034,7 @@ try {
   diffEl.addEventListener('input', () => { $('diffVal').textContent = diffEl.value; });
   [nameEl, minEl].forEach(x => x.addEventListener('input', () => { errorEl.textContent = ''; }));
 
+  // Добавление в выбранный день
   const hasOwnTime = () => typeEl.value === 'Кружок';
   function syncType() {
     const type = typeEl.value;
@@ -1061,18 +1043,29 @@ try {
     $('startTimeWrap').hidden = !isLesson;
     $('minWrap').hidden = !own;
     $('typeWrap').classList.toggle('full', !own);
+    startTimeEl.required = isLesson;
     errorEl.textContent = '';
-    $('startTime').required = isLesson;
   }
   typeEl.addEventListener('change', syncType);
+  [nameEl, minEl, startTimeEl].forEach(x => x.addEventListener('input', () => { errorEl.textContent = ''; }));
 
   form.addEventListener('submit', e => {
     e.preventDefault();
     const t = typeEl.value;
-    const isLesson = t === 'Урок';
-    
-    let m = isLesson ? 45 : settings.homework;
-    if (hasOwnTime()) {
+    let m = t === 'Урок' ? 45 : settings.homework;
+    let lessonData = {};
+
+    if (t === 'Урок') {
+      const startTime = startTimeEl.value;
+      if (!TIME_RE.test(startTime || '')) {
+        errorEl.textContent = 'Укажите время начала урока.';
+        startTimeEl.focus();
+        return;
+      }
+      const endMinutes = toMin(startTime) + 45;
+      const endTime = String(Math.floor(endMinutes / 60) % 24).padStart(2, '0') + ':' + String(endMinutes % 60).padStart(2, '0');
+      lessonData = { startTime, endTime };
+    } else if (hasOwnTime()) {
       m = Number(minEl.value);
       if (!Number.isInteger(m) || m < 5 || m > 600) {
         errorEl.textContent = 'Длительность — целое число минут от 5 до 600.';
@@ -1080,52 +1073,16 @@ try {
         return;
       }
     }
-    
-    let startTime = null;
-    let endTime = null;
-    if (isLesson) {
-      startTime = $('startTime').value;
-      if (!TIME_RE.test(startTime)) {
-        errorEl.textContent = 'Укажите время начала урока.';
-        $('startTime').focus();
-        return;
-      }
-      const startMinutes = toMin(startTime);
-      const endMinutes = startMinutes + 45;
-      const formatTime = minutes =>
-        String(Math.floor(minutes / 60) % 24).padStart(2, '0') +
-        ':' +
-        String(minutes % 60).padStart(2, '0');
-      endTime = formatTime(endMinutes);
-    }
 
     const added = nameEl.value.trim() || t;
-    const item = {
-      t,
-      n: added,
-      d: Number(diffEl.value),
-      m
-    };
-    if (isLesson) {
-      item.startTime = startTime;
-      item.endTime = endTime;
-    }
-    
-    days[sel].push(item);
+    days[sel].push({ t, n: added, d: Number(diffEl.value), m, ...lessonData });
     save();
     errorEl.textContent = '';
     nameEl.value = '';
     render();
-    
-    if (settings.autoClose) {
-      closeAdd();
-      return;
-    }
+    if (settings.autoClose) { closeAdd(); return; }
     nameEl.focus();
-    $('addOk').textContent =
-      'Добавлено в день «' + FULL[sel] +
-      '»: ' + added +
-      '. Дел в этот день: ' + days[sel].length + '.';
+    $('addOk').textContent = 'Добавлено в день «' + FULL[sel] + '»: ' + added + '. Дел в этот день: ' + days[sel].length + '.';
   });
 
   // ---------- Окно «Добавить дело» ----------
@@ -1162,6 +1119,7 @@ try {
   addBack.addEventListener('click', e => { if (e.target === addBack) closeAdd(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !addBack.hidden) closeAdd(); });
 
+  // Удаление одного элемента
   $('list').addEventListener('click', e => {
     const b = e.target.closest('button[data-i]');
     if (!b) return;
@@ -1170,6 +1128,7 @@ try {
     render();
   });
 
+  // «Очистить день»: первое нажатие просит подтвердить, второе — стирает
   const clearBtn = $('clear');
   let timer = null;
   function disarm() {
@@ -1191,6 +1150,7 @@ try {
   });
   $('tabs').addEventListener('click', disarm);
 
+  // Пример недели, чтобы сразу увидеть, как всё работает
   $('sample').addEventListener('click', () => {
     const U = (n, d, m = settings.lesson) => ({ t: 'Урок', n, d, m });
     const K = (n, d, m) => ({ t: 'Кружок', n, d, m });
@@ -1209,12 +1169,13 @@ try {
   });
 
   // ===== Экспорт и импорт CSV =====
-  const DELIM = ';';
+  const DELIM = ';';   // «;» корректно открывается в Excel и Numbers с русскими настройками; при импорте разделитель определяется сам
   const NL = String.fromCharCode(10), CR = String.fromCharCode(13), TAB = String.fromCharCode(9);
   const QUOT = String.fromCharCode(34), APOS = String.fromCharCode(39), BOM = String.fromCharCode(0xFEFF);
   const ioMsg = $('ioMsg');
   const say = (text, ok) => { ioMsg.textContent = text; ioMsg.className = 'io-msg ' + (ok ? 'ok' : 'err'); };
 
+  // Ячейка CSV: кавычки при необходимости + защита от формул в Excel (= + - @)
   function csvCell(v) {
     let s = String(v);
     if (/^[=+@-]/.test(s) || s[0] === TAB || s[0] === CR) s = APOS + s;
@@ -1225,9 +1186,10 @@ try {
   function buildCSV() {
     const lines = [['День', 'Тип', 'Название', 'Сложность', 'Минуты'].join(DELIM)];
     days.forEach((items, i) => items.forEach(it => lines.push([DAYS[i], it.t, it.n, it.d, it.m].map(csvCell).join(DELIM))));
-    return BOM + lines.join(CR + NL) + CR + NL;
+    return BOM + lines.join(CR + NL) + CR + NL;   // BOM — чтобы кириллица читалась в Excel
   }
 
+  // Экспорт: опубликованная страница просит у зрителя разрешение на сохранение, локальный файл — обычная загрузка
   $('exp').addEventListener('click', async () => {
     const count = days.reduce((n, d) => n + d.length, 0);
     if (!count) return say('Расписание пустое — экспортировать нечего.', false);
@@ -1251,6 +1213,7 @@ try {
     }
   });
 
+  // Разбор CSV: кавычки, двойные кавычки внутри ячейки, переносы строк внутри кавычек
   function parseCSV(text, delim) {
     const rows = [];
     let row = [], field = '', quoted = false;
@@ -1270,12 +1233,14 @@ try {
     return rows.filter(r => r.some(x => x.trim() !== ''));
   }
 
+  // День: Пн / понедельник / 1
   function parseDay(s) {
     s = s.trim().toLowerCase();
     let i = DAYS.findIndex(d => d.toLowerCase() === s);
     if (i < 0) i = FULL.findIndex(d => d.toLowerCase() === s);
     return i >= 0 ? i : (/^[1-7]$/.test(s) ? Number(s) - 1 : -1);
   }
+  // Тип: Урок / Кружок / Домашка (пусто = Урок)
   function parseType(s) {
     s = s.trim().toLowerCase();
     if (!s || s.startsWith('урок')) return 'Урок';
@@ -1288,12 +1253,13 @@ try {
   function importText(raw) {
     const text = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
     const first = text.split(NL, 1)[0];
+    // Разделитель (; , или табуляция) определяем по первой строке
     const delim = [DELIM, ',', TAB].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
     const fresh = [[], [], [], [], [], [], []];
     let ok = 0, skipped = 0;
     parseCSV(text, delim).forEach((r, idx) => {
       const di = parseDay(r[0] || '');
-      if (di < 0) { if (idx > 0) skipped++; return; }
+      if (di < 0) { if (idx > 0) skipped++; return; }   // первая строка без дня — заголовок
       const t = parseType(r[1] || ''), d = num(r[3]), m = num(r[4]);
       if (ok >= 500 || !t || !Number.isInteger(d) || d < 1 || d > 10 || !Number.isInteger(m) || m < 5 || m > 600) { skipped++; return; }
       const n = String(r[2] || '').trim().replace(/^'(?=[=+@-])/, '').slice(0, 40) || t;
@@ -1316,19 +1282,21 @@ try {
     r.onload = () => {
       let t;
       try { t = new TextDecoder('utf-8', { fatal: true }).decode(r.result); }
-      catch (err) { t = new TextDecoder('windows-1251').decode(r.result); }
+      catch (err) { t = new TextDecoder('windows-1251').decode(r.result); }   // Excel на Windows сохраняет CSV в этой кодировке
       importText(t);
     };
     r.onerror = () => say('Не удалось прочитать файл.', false);
     r.readAsArrayBuffer(f);
-    e.target.value = '';
+    e.target.value = '';   // чтобы можно было выбрать тот же файл ещё раз
   });
+  // Запасной путь: вставить CSV текстом (если выбор файла недоступен)
   $('pasteGo').addEventListener('click', () => {
     const t = $('paste').value.trim();
     if (!t) return say('Вставьте текст CSV в поле выше.', false);
     importText(t);
   });
 
+  // Новый день: если страница осталась открытой за полночь (или вкладку открыли снова), переходим на сегодняшний день
   let lastDate = new Date().toDateString();
   function checkNewDay() {
     const now = new Date().toDateString();
@@ -1339,11 +1307,32 @@ try {
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNewDay(); });
   window.addEventListener('focus', checkNewDay);
-  setInterval(checkNewDay, 60000);
+  setInterval(checkNewDay, 60000);   // и проверка раз в минуту
 
-  // ---------- Настройки ----------
+  // Запоминаем начало текущей учебной недели. Состояние урока не сохраняется как «навсегда завершённое»:
+  // поэтому в новую неделю уроки автоматически снова активны в свой день.
+  const WEEK_KEY = 'schedule-last-monday-v1';
+  function getMondayTimestamp(date = new Date()) {
+    const monday = new Date(date);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - (monday.getDay() + 6) % 7);
+    return monday.getTime();
+  }
+  function checkNewWeek() {
+    const mondayTimestamp = getMondayTimestamp();
+    let savedTimestamp = null;
+    try { savedTimestamp = Number(localStorage.getItem(WEEK_KEY)); } catch (e) {}
+    if (savedTimestamp !== mondayTimestamp) {
+      try { localStorage.setItem(WEEK_KEY, String(mondayTimestamp)); } catch (e) {}
+      render();
+    }
+  }
+  checkNewWeek();
+  setInterval(checkNewWeek, 60000);
+
+  // ---------- Настройки: применение и окно ----------
   function saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { }
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* не страшно */ }
   }
   function applySettings() {
     const r = document.documentElement;
@@ -1353,6 +1342,7 @@ try {
     if (settings.compact) r.setAttribute('data-compact', ''); else r.removeAttribute('data-compact');
     updatePalette();
   }
+  // После смены города или переключателя погоды: берём сохранённую погоду нового города и запрашиваем свежую
   function weatherReset() {
     weatherReq++;
     weather = loadWeather();
@@ -1398,7 +1388,7 @@ try {
         const v = Number($(id).value);
         if (Number.isInteger(v) && v >= range[0] && v <= range[1]) setSetting(key, v);
       });
-      $(id).addEventListener('change', syncDurInputs);
+      $(id).addEventListener('change', syncDurInputs);   // ушли из поля с неверным числом: вернуть сохранённое значение
     });
     ['input', 'change'].forEach(ev => {
       $('age').addEventListener(ev, () => {
@@ -1411,6 +1401,7 @@ try {
       }));
     });
   }
+  // Подставляет сохранённые значения в поля (при вводе поля не перезаписываются)
   function syncSleepInputs() {
     $('age').value = settings.age === null ? '' : settings.age;
     $('bed').value = settings.bed;
@@ -1463,6 +1454,7 @@ try {
   sheetBack.addEventListener('click', e => { if (e.target === sheetBack) closeSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetBack.hidden) closeSheet(); });
 
+  // Удаление всего расписания: нужно нажать два раза подряд
   let resetArmed = false, resetTimer = 0;
   function armReset(on) {
     resetArmed = on;
@@ -1478,53 +1470,27 @@ try {
     save(); render(); armReset(false);
   });
 
+  // Настройки, изменённые в другой вкладке, применяются и здесь
   window.addEventListener('storage', e => {
     if (e.key === SETTINGS_KEY) { settings = loadSettings(); applySettings(); syncSleepInputs(); syncDurInputs(); renderSettings(); weatherReset(); }
   });
 
   buildSettings();
+  syncType();
   applySettings();
   syncSleepInputs();
   syncDurInputs();
   renderSettings();
 
+  // Если сайт открыт в двух вкладках, изменения из одной появляются в другой
   window.addEventListener('storage', e => { if (e.key === KEY) { days = loadDays(); render(); } });
+  // Просим браузер не удалять сохранённые данные при нехватке места
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
-  // ---------- Проверка новой недели ----------
-  const WEEK_KEY = 'schedule-last-monday-v1';
-  function getMondayTimestamp(date = new Date()) {
-    const monday = new Date(date);
-    monday.setHours(0, 0, 0, 0);
-    const day = (monday.getDay() + 6) % 7;
-    monday.setDate(monday.getDate() - day);
-    return monday.getTime();
-  }
-  function checkNewWeek() {
-    const mondayTimestamp = getMondayTimestamp();
-    let savedTimestamp = null;
-    try {
-      savedTimestamp = Number(localStorage.getItem(WEEK_KEY));
-    } catch (e) {}
-    if (savedTimestamp !== mondayTimestamp) {
-      try {
-        localStorage.setItem(WEEK_KEY, String(mondayTimestamp));
-      } catch (e) {}
-      render();
-    }
-  }
-
-  // Запуск
-  checkNewWeek();
   render();
   updateNote();
   fetchWeather();
-  setInterval(fetchWeather, 30 * 60 * 1000);
-  setInterval(() => {
-    checkNewWeek();
-    render();
-  }, 60 * 1000);
-
+  setInterval(fetchWeather, 30 * 60 * 1000);   // обновлять погоду раз в полчаса
 })();
 </script>
 <style>
@@ -1536,12 +1502,14 @@ try {
 html.a-ready .wrap>*{animation-delay:0s}
 #empty,#result,#weather:not([hidden]){animation:a-fade .4s ease backwards}
 
+/* Плашка выбранного дня (сама плавно переезжает через JS) */
 .tabs{isolation:isolate}
 .tabs .tab{position:relative;transition:transform .15s}
 .tabs .tab:active{transform:scale(.92)}
 .tabs .tab.active{background:transparent;box-shadow:none}
 .tabs .tab.active::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:20px;background:var(--thumb);box-shadow:0 2px 10px var(--shadow),inset 0 1px 0 var(--hi)}
 
+/* Нажатия и мелкие переходы */
 .wbar{transition:transform .15s,background .2s}.wbar:active{transform:scale(.94)}
 .wfill{transform-origin:50% 100%}
 .icon-btn{transition:transform .15s,color .2s,background .2s}.icon-btn:active{transform:scale(.85)}
@@ -1550,6 +1518,7 @@ html.a-ready .wrap>*{animation-delay:0s}
 .swatch:active .dot{transform:scale(.9)}
 .swatch[aria-checked="true"] .dot{transform:scale(1.08)}
 
+/* Плавная смена темы и цвета */
 html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:background-color .45s,color .45s,border-color .45s,box-shadow .45s,fill .45s,stroke .45s!important}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important;transition-delay:0s!important}}
@@ -1559,11 +1528,13 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   'use strict';
   const $ = id => document.getElementById(id);
   const mq = matchMedia('(prefers-reduced-motion: reduce)'), still = () => mq.matches;
+  // Обёртка над Web Animations API: ничего не делает, если анимации отключены в системе
   const anim = (n, k, o) => {
     if (!n || !n.animate || still()) return null;
     try { return n.animate(k, Object.assign({ duration: 450, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }, o)); }
     catch (e) { return null; }
   };
+  // Следит за изменениями узла: сначала разовый вызов, потом наблюдатель
   const watch = (n, f, o) => {
     if (!n) return null;
     f();
@@ -1576,6 +1547,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 
   setTimeout(() => document.documentElement.classList.add('a-ready'), 1400);
 
+  // 1. Плашка выбранного дня плавно переезжает на новый день
   const tabs = $('tabs'); let prev = -1;
   watch(tabs, () => {
     const t = [...tabs.children], i = t.findIndex(x => x.classList.contains('active'));
@@ -1587,6 +1559,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     prev = i;
   });
 
+  // 2. Коэффициент дня «накручивается» до нового значения
   const k = $('k'); let shown = 0, raf = 0, kmo = null;
   kmo = watch(k, () => {
     const to = parseFloat(k.textContent.replace(',', '.'));
@@ -1598,17 +1571,18 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
       const p = Math.min(1, (now - t0) / 800);
       shown = p < 1 ? from + (to - from) * (1 - Math.pow(1 - p, 3)) : to;
       k.textContent = shown.toFixed(1).replace('.', ',');
-      if (kmo) kmo.takeRecords();
+      if (kmo) kmo.takeRecords();   // свои записи не считаем изменением
       if (p < 1) raf = requestAnimationFrame(step);
     };
     step(t0);
   }, { childList: true, characterData: true, subtree: true });
 
+  // 3. Кольцо диаграммы последовательно «дорисовывается» по секторам
   const pie = $('pie'); let pieSig = '';
   watch(pie, () => {
     const c = [...pie.children];
     const sig = c.map(x => ['stroke-dasharray', 'stroke-dashoffset', 'stroke'].map(a => x.getAttribute(a)).join()).join('|');
-    if (sig === pieSig) return;
+    if (sig === pieSig) return;   // перерисовка без изменений (например, обновилась погода) — не повторяем
     pieSig = sig;
     c.slice(1).forEach(x => {
       const to = x.getAttribute('stroke-dasharray'), p = parseFloat(to), off = 25 - parseFloat(x.getAttribute('stroke-dashoffset'));
@@ -1616,6 +1590,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     });
   });
 
+  // 4. Список дел: строки выезжают по очереди (при добавлении — только новая), при удалении уезжают
   const list = $('list'); let pl = [];
   watch(list, () => {
     const cur = [$('dayTitle').textContent].concat([...list.children].map(r =>
@@ -1628,13 +1603,14 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   list.addEventListener('click', e => {
     const b = e.target.closest('button[data-i]');
     if (!b || b.dataset.go || still()) return;
-    e.stopPropagation();
+    e.stopPropagation();   // сначала анимация, потом штатное удаление
     b.disabled = true;
     const a = anim(b.closest('.row'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(32px)' }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
     const go = () => { b.disabled = false; b.dataset.go = '1'; b.click(); };
     if (a) a.onfinish = go; else go();
   }, true);
 
+  // 5. Столбики недели вырастают, когда меняются данные
   let ws = '';
   watch($('weekBars'), () => {
     const f = [...document.querySelectorAll('#weekBars .wfill')], s = f.map(x => x.className + x.style.height).join();
@@ -1643,6 +1619,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     f.forEach((x, i) => anim(x, [{ transform: 'scaleY(0)' }, { transform: 'none' }], { duration: 700, delay: i * 50 }));
   });
 
+  // 6. Подсказки и сообщения мягко появляются
   ['hints', 'weekHints'].forEach(id => {
     const h = $(id); let s = '';
     watch(h, () => {
@@ -1655,6 +1632,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   const io = $('ioMsg');
   watch(io, () => { if (io.textContent) anim(io, dropIn, { duration: 300 }); });
 
+  // 7. Ошибка в форме: поле «потряхивает»
   const er = $('error');
   watch(er, () => {
     if (!er.textContent) return;
@@ -1662,6 +1640,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     anim(er, dropIn, { duration: 280 });
   });
 
+  // 8. Окна (настройки и «Добавить дело»): выезжают снизу (на широком экране всплывают) и так же закрываются
   const wide = matchMedia('(min-width:700px)');
   const sheetFrom = () => wide.matches ? { opacity: 0, transform: 'translateY(18px) scale(.96)' } : { transform: 'translateY(100%)' };
   ['sheetBackdrop', 'addBackdrop'].forEach(id => {
@@ -1672,6 +1651,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
         anim(sb, [{ opacity: 0 }, { opacity: 1 }], { duration: 280 });
         anim(sb.firstElementChild, [sheetFrom(), { opacity: 1, transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.2,.9,.25,1)' });
       } else if (sb.hidden && open && !still()) {
+        // Окно уже скрыто, поэтому анимируем его копию и удаляем после окончания
         const g = sb.cloneNode(true);
         g.hidden = false; g.removeAttribute('id');
         g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
@@ -1685,6 +1665,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     }, { attributes: true, attributeFilter: ['hidden'] });
   });
 
+  // 9. Смена темы или цвета: плавный переход, пятна фона не «щёлкают»
   const root = document.documentElement, bg = document.querySelector('.bg');
   const tv = () => (root.getAttribute('data-theme') || '') + '|' + root.getAttribute('data-accent');
   let lt = tv(), tt = 0;
@@ -1700,6 +1681,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 })();
 </script>
 <script>
+/* ===== Улучшения для iPhone/iPad без изменения логики планера ===== */
 (function () {
   'use strict';
   var root = document.documentElement;
@@ -1709,6 +1691,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   } catch (e) {}
 
+  /* Высота именно видимой области Safari: помогает окнам при открытой клавиатуре. */
   function syncVisualViewport() {
     try {
       var vv = window.visualViewport;
@@ -1724,6 +1707,8 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
   }
 
+  /* Не даём прокрутке страницы проходить сквозь затемнение, но сохраняем
+     прокрутку содержимого самого окна настроек/добавления дела. */
   ['sheetBackdrop', 'addBackdrop'].forEach(function (id) {
     var backdrop = document.getElementById(id);
     if (!backdrop) return;
@@ -1732,6 +1717,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     }, { passive: false });
   });
 
+  /* На iOS клавиатура иногда перекрывает активное поле внутри модального окна. */
   document.addEventListener('focusin', function (event) {
     var target = event.target;
     if (!target || !target.matches || !target.matches('input, select, textarea')) return;
@@ -1746,6 +1732,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     }, 220);
   });
 
+  /* Подсказка установки показывается только на втором посещении и запоминает закрытие. */
   if (!standalone) {
     try {
       var dismissed = localStorage.getItem('planner-ios-install-hint-dismissed-v1') === '1';
@@ -1772,6 +1759,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 </script>
 
 <script>
+/* Русский / English. Язык хранится отдельно от настроек расписания. */
 (function () {
   'use strict';
   var KEY = 'planner-language-v1';
@@ -1946,4 +1934,4 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 
 </body>
 </html>
-```
+
