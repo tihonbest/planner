@@ -354,6 +354,26 @@
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto !important; }
   }
+
+  /* ===== Калькулятор оценок MarkIt ===== */
+  .calc-button svg { width:24px; height:24px; display:block; margin:auto; }
+  .calc-terms { margin-bottom:16px; }
+  .calc-terms button { min-height:42px; font-weight:600; }
+  #calcContent { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+  #calcContent .subject-item {
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:14px 16px; background:var(--card); border:1px solid var(--edge);
+    border-radius:18px; color:var(--text); font:inherit; text-align:left; overflow-wrap:anywhere;
+  }
+  #calcContent .subject-item-name { min-width:0; font-weight:600; }
+  #calcContent .subject-item-grade { display:flex; align-items:center; gap:8px; flex-shrink:0; font-weight:700; }
+  #calcContent .grade-average { font-variant-numeric:tabular-nums; }
+  #calcContent .pill {
+    display:inline-block; width:12px; height:12px; min-width:12px; padding:0;
+    border-radius:50%; flex:none;
+  }
+  #calcContent .calc-empty { padding:18px 8px; color:var(--muted); text-align:center; line-height:1.5; }
+
 </style>
 <script>
 /* Применяем тему и цвет до отрисовки страницы, чтобы не было мигания */
@@ -376,6 +396,13 @@ try {
   <!-- Погода и настройки -->
   <div class="topline">
     <div class="weather" id="weather" role="status" aria-live="polite" hidden></div>
+    <!-- Кнопка открытия калькулятора оценок -->
+    <button type="button" class="gear calc-button" id="openCalc" aria-label="Оценки" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="5" y="2.5" width="14" height="19" rx="3"/>
+        <path d="M8 6h8"/><path d="M8 10h2"/><path d="M14 10h2"/><path d="M8 14h2"/><path d="M14 14h2"/><path d="M8 18h2"/><path d="M14 18h2"/>
+      </svg>
+    </button>
     <button type="button" class="gear" id="openSettings" aria-label="Настройки" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M10.71 4.92 L10.87 2.47 L13.13 2.47 L13.29 4.92 L16.09 6.08 L17.94 4.46 L19.54 6.06 L17.92 7.91 L19.08 10.71 L21.53 10.87 L21.53 13.13 L19.08 13.29 L17.92 16.09 L19.54 17.94 L17.94 19.54 L16.09 17.92 L13.29 19.08 L13.13 21.53 L10.87 21.53 L10.71 19.08 L7.91 17.92 L6.06 19.54 L4.46 17.94 L6.08 16.09 L4.92 13.29 L2.47 13.13 L2.47 10.87 L4.92 10.71 L6.08 7.91 L4.46 6.06 L6.06 4.46 L7.91 6.08 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
     </button>
@@ -547,6 +574,23 @@ try {
       <button type="button" class="btn ghost" id="resetAll" style="margin-top:12px">Удалить всё расписание</button>
       <p class="set-help">Расписание и настройки хранятся только в вашем браузере на этом устройстве. Чтобы перенести расписание на другое устройство, используйте экспорт в CSV.</p>
     </div>
+  </div>
+</div>
+
+<!-- Окно калькулятора оценок -->
+<div class="sheet-backdrop" id="calcBackdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+    <div class="sheet-head">
+      <h2 id="calcTitle">Оценки</h2>
+      <button type="button" class="btn ghost" id="calcClose">Готово</button>
+    </div>
+    <div class="seg calc-terms" id="calcTermSeg" role="radiogroup" aria-label="Период оценок">
+      <button type="button" data-term="1" aria-checked="true" role="radio">1</button>
+      <button type="button" data-term="2" aria-checked="false" role="radio">2</button>
+      <button type="button" data-term="3" aria-checked="false" role="radio">3</button>
+      <button type="button" data-term="0" aria-checked="false" role="radio">Год</button>
+    </div>
+    <div id="calcContent" aria-live="polite"></div>
   </div>
 </div>
 
@@ -955,6 +999,63 @@ try {
     });
   }
 
+  // Средневзвешенный балл предмета из MarkIt
+  function getSubjectGrade(lessonName) {
+    try {
+      const saved = localStorage.getItem('markit_data_v3');
+      if (!saved) return null;
+
+      const data = JSON.parse(saved);
+      if (!data || !data.subjects || typeof data.subjects !== 'object') return null;
+
+      function normalizeName(name) {
+        return String(name)
+          .replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, ' ')
+          .toLowerCase()
+          .replace(/[^a-zа-яё0-9]+/gi, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      }
+
+      const normalizedLesson = normalizeName(lessonName);
+      if (!normalizedLesson) return null;
+
+      const subjects = Object.entries(data.subjects);
+      let match = subjects.find(([name]) => normalizeName(name) === normalizedLesson);
+
+      if (!match) {
+        const firstFour = normalizedLesson.replace(/\s/g, '').slice(0, 4);
+        if (!firstFour) return null;
+        match = subjects.find(([name]) =>
+          normalizeName(name).replace(/\s/g, '').startsWith(firstFour)
+        );
+      }
+
+      if (!match || !Array.isArray(match[1])) return null;
+
+      let weightedSum = 0;
+      let totalWeight = 0;
+
+      match[1].forEach(item => {
+        if (!item) return;
+        const grade = Number(item.grade);
+        const weight = Number(item.weight);
+        if (
+          Number.isFinite(grade) && grade >= 2 && grade <= 5 &&
+          Number.isFinite(weight) && weight > 0
+        ) {
+          weightedSum += grade * weight;
+          totalWeight += weight;
+        }
+      });
+
+      return totalWeight > 0 ? weightedSum / totalWeight : null;
+    } catch (error) {
+      console.error('Ошибка получения среднего балла MarkIt:', error);
+      return null;
+    }
+  }
+
   function render() {
     const items = days[sel], s = stats(items, sel), has = items.length > 0;
     renderTabs();
@@ -1013,7 +1114,21 @@ try {
       let details = it.m + ' мин';
       if (it.t === 'Урок' && TIME_RE.test(it.startTime || '') && TIME_RE.test(it.endTime || '')) details = it.startTime + '–' + it.endTime;
       if (passed) details += ' · урок завершён';
-      info.append(el('div', 't', it.n), el('div', 'm', it.t + ' · ' + details + (passed ? '' : ' · ' + share + '% нагрузки')));
+      const title = el('div', 't', it.n);
+      if (it.t === 'Урок') {
+        const avg = getSubjectGrade(it.n);
+        if (avg !== null && Number.isFinite(avg)) {
+          const hue = ((Math.max(2, Math.min(5, avg)) - 2) / 3) * 120;
+          const color = 'hsl(' + hue + ', 75%, 42%)';
+          const gradeBadge = document.createElement('span');
+          gradeBadge.textContent = '[' + avg.toFixed(2).replace('.', ',') + ']';
+          gradeBadge.style.fontWeight = '700';
+          gradeBadge.style.color = color;
+          gradeBadge.style.marginLeft = '4px';
+          title.appendChild(gradeBadge);
+        }
+      }
+      info.append(title, el('div', 'm', it.t + ' · ' + details + (passed ? '' : ' · ' + share + '% нагрузки')));
       const pill = el('span', 'pill ' + (it.d <= 3 ? 'good' : it.d <= 6 ? 'warn' : 'bad'), it.d);
       pill.title = 'Сложность';
       const del = el('button', 'icon-btn', '✕');
@@ -1759,6 +1874,178 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 </script>
 
 <script>
+/* Калькулятор оценок MarkIt: только чтение localStorage */
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'markit_data_v3';
+  const openBtn = document.getElementById('openCalc');
+  const closeBtn = document.getElementById('calcClose');
+  const backdrop = document.getElementById('calcBackdrop');
+  const termSeg = document.getElementById('calcTermSeg');
+  const content = document.getElementById('calcContent');
+
+  if (!openBtn || !closeBtn || !backdrop || !termSeg || !content) {
+    console.error('MarkIt: не найдены элементы окна оценок.');
+    return;
+  }
+
+  function getDefaultTerm() {
+    const month = new Date().getMonth() + 1;
+    if (month >= 9 && month <= 11) return 1;
+    if (month === 12 || month <= 2) return 2;
+    return 3;
+  }
+
+  let selectedTerm = getDefaultTerm();
+  let previousFocus = null;
+  let previousBodyOverflow = '';
+
+  function openCalc() {
+    previousFocus = document.activeElement;
+    previousBodyOverflow = document.body.style.overflow;
+    backdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderCalc(selectedTerm);
+    closeBtn.focus();
+  }
+
+  function closeCalc() {
+    backdrop.hidden = true;
+    document.body.style.overflow = previousBodyOverflow;
+    if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+  }
+
+  openBtn.addEventListener('click', openCalc);
+  closeBtn.addEventListener('click', closeCalc);
+  backdrop.addEventListener('click', function (event) {
+    if (event.target === backdrop) closeCalc();
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !backdrop.hidden) closeCalc();
+  });
+
+  function updateTermButtons() {
+    termSeg.querySelectorAll('button[data-term]').forEach(function (button) {
+      button.setAttribute('aria-checked', String(Number(button.dataset.term) === selectedTerm));
+    });
+  }
+
+  termSeg.addEventListener('click', function (event) {
+    const button = event.target.closest('button[data-term]');
+    if (!button) return;
+    selectedTerm = Number(button.dataset.term);
+    updateTermButtons();
+    renderCalc(selectedTerm);
+  });
+
+  // Непрерывный градиент: 2 = красный, 3.5 = жёлтый, 5 = зелёный.
+  function getGradeColor(average) {
+    const value = Math.max(2, Math.min(5, average));
+    const hue = ((value - 2) / 3) * 120;
+    return 'hsl(' + hue + ', 75%, 42%)';
+  }
+
+  function showMessage(message) {
+    content.textContent = '';
+    const paragraph = document.createElement('p');
+    paragraph.className = 'calc-empty';
+    paragraph.textContent = message;
+    content.appendChild(paragraph);
+  }
+
+  function renderCalc(term) {
+    content.textContent = '';
+    let data;
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) {
+        showMessage('Нет оценок за выбранный период.');
+        return;
+      }
+      data = JSON.parse(saved);
+    } catch (error) {
+      showMessage('Не удалось прочитать данные MarkIt.');
+      console.error('MarkIt: ошибка чтения данных.', error);
+      return;
+    }
+
+    if (!data || !data.subjects || typeof data.subjects !== 'object') {
+      showMessage('Нет оценок за выбранный период.');
+      return;
+    }
+
+    const rows = [];
+    Object.entries(data.subjects).forEach(function (entry) {
+      const name = entry[0];
+      const entries = entry[1];
+      if (!Array.isArray(entries)) return;
+
+      const grades = entries.filter(function (item) {
+        if (!item) return false;
+        const grade = Number(item.grade);
+        const weight = Number(item.weight);
+        if (!Number.isFinite(grade) || grade < 2 || grade > 5) return false;
+        if (!Number.isFinite(weight) || weight <= 0) return false;
+        return term === 0 || Number(item.term) === term;
+      });
+      if (grades.length === 0) return;
+
+      let totalWeight = 0;
+      let weightedSum = 0;
+      grades.forEach(function (item) {
+        const grade = Number(item.grade);
+        const weight = Number(item.weight);
+        weightedSum += grade * weight;
+        totalWeight += weight;
+      });
+      if (totalWeight <= 0) return;
+      rows.push({ name: name, average: weightedSum / totalWeight });
+    });
+
+    rows.sort(function (a, b) { return a.average - b.average; });
+    if (rows.length === 0) {
+      showMessage('Нет оценок за выбранный период.');
+      return;
+    }
+
+    rows.forEach(function (row) {
+      const item = document.createElement('div');
+      item.className = 'subject-item';
+
+      const name = document.createElement('span');
+      name.className = 'subject-item-name';
+      name.textContent = row.name;
+
+      const grade = document.createElement('span');
+      grade.className = 'subject-item-grade';
+
+      const averageText = document.createElement('span');
+      averageText.className = 'grade-average';
+      averageText.textContent = row.average.toFixed(2).replace('.', ',');
+      averageText.style.color = getGradeColor(row.average);
+
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      pill.style.backgroundColor = getGradeColor(row.average);
+      pill.setAttribute('aria-hidden', 'true');
+
+      grade.append(averageText, pill);
+      item.append(name, grade);
+      content.appendChild(item);
+    });
+  }
+
+  window.addEventListener('storage', function (event) {
+    if (event.key === STORAGE_KEY && !backdrop.hidden) renderCalc(selectedTerm);
+  });
+
+  updateTermButtons();
+})();
+</script>
+
+<script>
 /* Русский / English. Язык хранится отдельно от настроек расписания. */
 (function () {
   'use strict';
@@ -1774,7 +2061,9 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   var DICT = {
     'Индикатор сложности расписания':'Schedule Difficulty Indicator',
     'Добавьте уроки, кружки и домашку — получите коэффициент сложности дня.':'Add lessons, activities, and homework to calculate your day’s difficulty score.',
-    'Настройки':'Settings','Добавить дело':'Add task','День':'Day','Очистить день':'Clear day',
+    'Настройки':'Settings','Оценки':'Grades','Период оценок':'Grade period','Год':'Year',
+    'Нет оценок за выбранный период.':'No grades for the selected period.','Не удалось прочитать данные MarkIt.':'Could not read MarkIt data.',
+    'Добавить дело':'Add task','День':'Day','Очистить день':'Clear day',
     'В этом дне пока ничего нет. Нажмите «Добавить дело».':'Nothing planned for this day yet. Tap “Add task”.',
     'Заполнить примером недели':'Fill with sample week','Круговая диаграмма нагрузки дня':'Daily workload pie chart',
     'коэффициент дня из 10':'Daily score out of 10','часов занято':'hours scheduled','средняя сложность':'average difficulty',
