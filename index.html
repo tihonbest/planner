@@ -373,6 +373,26 @@
     border-radius:50%; flex:none;
   }
   #calcContent .calc-empty { padding:18px 8px; color:var(--muted); text-align:center; line-height:1.5; }
+  .calc-tools { display:grid; gap:10px; margin:14px 0 16px; }
+  .calc-tool { border:1px solid var(--edge); border-radius:18px; background:var(--card); overflow:hidden; }
+  .calc-tool summary { cursor:pointer; list-style:none; padding:13px 15px; font-weight:650; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .calc-tool summary::-webkit-details-marker { display:none; }
+  .calc-tool summary::after { content:'＋'; color:var(--muted); font-size:1.1rem; }
+  .calc-tool[open] summary::after { content:'−'; }
+  .calc-tool-body { padding:0 14px 14px; display:grid; gap:10px; }
+  .calc-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .calc-field { min-width:0; display:grid; gap:5px; color:var(--muted); font-size:.84rem; }
+  .calc-field.full { grid-column:1 / -1; }
+  .calc-field input, .calc-field select, .calc-import-text {
+    width:100%; min-width:0; box-sizing:border-box; border:1px solid var(--edge); border-radius:12px;
+    padding:11px 12px; background:var(--fill); color:var(--text); font:inherit; font-size:16px;
+  }
+  .calc-import-text { min-height:100px; resize:vertical; line-height:1.4; }
+  .calc-tool-message { margin:0; min-height:1em; font-size:.84rem; color:var(--muted); line-height:1.4; }
+  .calc-tool-message[data-state="error"] { color:var(--bad); }
+  .calc-tool-message[data-state="success"] { color:var(--good); }
+  .calc-action { width:100%; }
+  @media (max-width:380px) { .calc-form-grid { grid-template-columns:1fr; } .calc-field.full { grid-column:auto; } }
 
 </style>
 <script>
@@ -590,6 +610,51 @@ try {
       <button type="button" data-term="3" aria-checked="false" role="radio">3</button>
       <button type="button" data-term="0" aria-checked="false" role="radio">Год</button>
     </div>
+
+    <div class="calc-tools">
+      <details class="calc-tool" id="addGradePanel">
+        <summary>＋ Добавить оценку</summary>
+        <form class="calc-tool-body" id="addGradeForm" novalidate>
+          <div class="calc-form-grid">
+            <label class="calc-field full">Предмет
+              <input id="newGradeSubject" list="markitSubjectOptions" maxlength="80" placeholder="Например, Математика" required>
+              <datalist id="markitSubjectOptions"></datalist>
+            </label>
+            <label class="calc-field">Оценка
+              <select id="newGradeValue" required>
+                <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option>
+              </select>
+            </label>
+            <label class="calc-field">Вес
+              <input id="newGradeWeight" type="number" min="0.1" max="100" step="0.1" value="1">
+            </label>
+            <label class="calc-field full">Триместр
+              <select id="newGradeTerm">
+                <option value="1">1 триместр</option><option value="2">2 триместр</option><option value="3">3 триместр</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="btn primary calc-action">Сохранить оценку</button>
+          <p class="calc-tool-message" id="addGradeMessage" role="status"></p>
+        </form>
+      </details>
+
+      <details class="calc-tool" id="importMarkitPanel">
+        <summary>⇧ Импорт оценок из MarkIt</summary>
+        <div class="calc-tool-body">
+          <p class="muted" style="margin:0;font-size:.86rem;line-height:1.45">В MarkIt нажмите «Копия», затем вставьте сюда весь скопированный JSON. Импорт объединит данные и не удалит существующие оценки.</p>
+          <label class="calc-field full">Файл резервной копии (необязательно)
+            <input id="markitImportFile" type="file" accept=".json,.txt,application/json,text/plain">
+          </label>
+          <label class="calc-field full">Данные MarkIt
+            <textarea id="markitImportText" class="calc-import-text" spellcheck="false" placeholder="Вставьте сюда текст копии MarkIt"></textarea>
+          </label>
+          <button type="button" class="btn primary calc-action" id="importMarkitBtn">Импортировать оценки</button>
+          <p class="calc-tool-message" id="importMarkitMessage" role="status"></p>
+        </div>
+      </details>
+    </div>
+
     <div id="calcContent" aria-live="polite"></div>
   </div>
 </div>
@@ -1139,6 +1204,9 @@ try {
       list.appendChild(row);
     });
   }
+
+  // Обновляем список дел, если оценки изменены в окне MarkIt этого же планера.
+  window.addEventListener('markit-data-updated', render);
 
   // ---------- Обработчики ----------
   $('tabs').addEventListener('click', e => {
@@ -1874,7 +1942,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 </script>
 
 <script>
-/* Калькулятор оценок MarkIt: только чтение localStorage */
+/* Калькулятор оценок MarkIt: просмотр, добавление и импорт оценок */
 (function () {
   'use strict';
 
@@ -1884,8 +1952,19 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   const backdrop = document.getElementById('calcBackdrop');
   const termSeg = document.getElementById('calcTermSeg');
   const content = document.getElementById('calcContent');
+  const addGradeForm = document.getElementById('addGradeForm');
+  const subjectInput = document.getElementById('newGradeSubject');
+  const gradeInput = document.getElementById('newGradeValue');
+  const weightInput = document.getElementById('newGradeWeight');
+  const gradeTermInput = document.getElementById('newGradeTerm');
+  const subjectOptions = document.getElementById('markitSubjectOptions');
+  const addGradeMessage = document.getElementById('addGradeMessage');
+  const importFile = document.getElementById('markitImportFile');
+  const importText = document.getElementById('markitImportText');
+  const importButton = document.getElementById('importMarkitBtn');
+  const importMessage = document.getElementById('importMarkitMessage');
 
-  if (!openBtn || !closeBtn || !backdrop || !termSeg || !content) {
+  if (!openBtn || !closeBtn || !backdrop || !termSeg || !content || !addGradeForm || !importButton) {
     console.error('MarkIt: не найдены элементы окна оценок.');
     return;
   }
@@ -1903,6 +1982,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
 
   function openCalc() {
     previousFocus = document.activeElement;
+    gradeTermInput.value = String(selectedTerm === 0 ? getDefaultTerm() : selectedTerm);
     previousBodyOverflow = document.body.style.overflow;
     backdrop.hidden = false;
     document.body.style.overflow = 'hidden';
@@ -1925,6 +2005,177 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     if (event.key === 'Escape' && !backdrop.hidden) closeCalc();
   });
 
+  function readMarkitData() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return { subjects: {}, nextId: 1, term: selectedTerm || getDefaultTerm() };
+    const data = JSON.parse(saved);
+    if (!data || !data.subjects || typeof data.subjects !== 'object' || Array.isArray(data.subjects)) {
+      throw new Error('Неверный формат данных MarkIt.');
+    }
+    if (!Number.isFinite(Number(data.nextId)) || Number(data.nextId) < 1) data.nextId = 1;
+    Object.keys(data.subjects).forEach(function (name) {
+      if (!Array.isArray(data.subjects[name])) data.subjects[name] = [];
+    });
+    return data;
+  }
+
+  function saveMarkitData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    renderCalc(selectedTerm);
+    updateSubjectOptions(data);
+    window.dispatchEvent(new Event('markit-data-updated'));
+  }
+
+  function updateSubjectOptions(data) {
+    if (!subjectOptions) return;
+    subjectOptions.textContent = '';
+    Object.keys(data.subjects || {}).sort().forEach(function (name) {
+      const option = document.createElement('option');
+      option.value = name;
+      subjectOptions.appendChild(option);
+    });
+  }
+
+  function setToolMessage(element, message, state) {
+    if (!element) return;
+    element.textContent = message;
+    if (state) element.dataset.state = state;
+    else delete element.dataset.state;
+  }
+
+  // Добавление оценки прямо в планере — формат записи совместим с MarkIt.
+  addGradeForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const subjectName = subjectInput.value.trim();
+    const grade = Number(gradeInput.value);
+    const weight = Number(String(weightInput.value).replace(',', '.'));
+    const term = Number(gradeTermInput.value);
+
+    if (!subjectName) {
+      setToolMessage(addGradeMessage, 'Введите название предмета.', 'error');
+      subjectInput.focus();
+      return;
+    }
+    if (![2, 3, 4, 5].includes(grade)) {
+      setToolMessage(addGradeMessage, 'Выберите оценку от 2 до 5.', 'error');
+      return;
+    }
+    if (!Number.isFinite(weight) || weight <= 0 || weight > 100) {
+      setToolMessage(addGradeMessage, 'Вес должен быть числом больше нуля и не больше 100.', 'error');
+      weightInput.focus();
+      return;
+    }
+
+    try {
+      const data = readMarkitData();
+      if (!Array.isArray(data.subjects[subjectName])) data.subjects[subjectName] = [];
+      let maxId = 0;
+      Object.values(data.subjects).forEach(function (entries) {
+        entries.forEach(function (item) { maxId = Math.max(maxId, Number(item && item.id) || 0); });
+      });
+      const nextId = Math.max(Number(data.nextId) || 1, maxId + 1);
+      data.subjects[subjectName].push({
+        id: nextId,
+        subject: '',
+        grade: grade,
+        weight: weight,
+        term: term,
+        date: Date.now()
+      });
+      data.nextId = nextId + 1;
+      if (![0, 1, 2, 3].includes(Number(data.term))) data.term = term;
+      saveMarkitData(data);
+      setToolMessage(addGradeMessage, 'Оценка сохранена.', 'success');
+      subjectInput.value = '';
+      gradeInput.value = '5';
+      weightInput.value = '1';
+      gradeTermInput.value = String(selectedTerm === 0 ? getDefaultTerm() : selectedTerm);
+    } catch (error) {
+      setToolMessage(addGradeMessage, 'Не удалось сохранить оценку. Возможно, хранилище недоступно.', 'error');
+      console.error('MarkIt: ошибка сохранения оценки.', error);
+    }
+  });
+
+  // Файл из резервной копии MarkIt можно выбрать или вставить JSON вручную.
+  if (importFile) {
+    importFile.addEventListener('change', function () {
+      const file = importFile.files && importFile.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        importText.value = String(reader.result || '');
+        setToolMessage(importMessage, 'Файл загружен. Нажмите «Импортировать оценки».', 'success');
+      };
+      reader.onerror = function () {
+        setToolMessage(importMessage, 'Не удалось прочитать файл.', 'error');
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  importButton.addEventListener('click', function () {
+    let imported;
+    try {
+      imported = JSON.parse(importText.value.trim());
+      if (!imported || !imported.subjects || typeof imported.subjects !== 'object' || Array.isArray(imported.subjects)) {
+        throw new Error('В файле не найден список предметов.');
+      }
+      Object.keys(imported.subjects).forEach(function (name) {
+        if (!Array.isArray(imported.subjects[name])) throw new Error('Список оценок предмета повреждён.');
+        imported.subjects[name].forEach(function (item) {
+          if (!item || !Number.isFinite(Number(item.grade)) || Number(item.grade) < 2 || Number(item.grade) > 5 ||
+              !Number.isFinite(Number(item.weight)) || Number(item.weight) <= 0) {
+            throw new Error('В копии есть оценка с неверным форматом.');
+          }
+        });
+      });
+    } catch (error) {
+      setToolMessage(importMessage, 'Не удалось прочитать копию MarkIt. Вставьте полный JSON из кнопки «Копия».', 'error');
+      return;
+    }
+
+    try {
+      const current = readMarkitData();
+      let maxId = 0;
+      Object.values(current.subjects).forEach(function (entries) {
+        entries.forEach(function (item) { maxId = Math.max(maxId, Number(item && item.id) || 0); });
+      });
+      let added = 0;
+      Object.keys(imported.subjects).forEach(function (name) {
+        if (!Array.isArray(current.subjects[name])) current.subjects[name] = [];
+        const existing = current.subjects[name];
+        imported.subjects[name].forEach(function (incoming) {
+          const duplicate = existing.some(function (item) {
+            return Number(item.id) === Number(incoming.id) &&
+              Number(item.grade) === Number(incoming.grade) &&
+              Number(item.weight) === Number(incoming.weight) &&
+              Number(item.term || getDefaultTerm()) === Number(incoming.term || getDefaultTerm()) &&
+              Number(item.date || 0) === Number(incoming.date || 0);
+          });
+          if (duplicate) return;
+          const copy = Object.assign({}, incoming);
+          if (!Number.isFinite(Number(copy.id)) || Number(copy.id) <= 0 ||
+              Object.values(current.subjects).some(function (entries) {
+                return entries.some(function (item) { return Number(item.id) === Number(copy.id); });
+              })) {
+            copy.id = ++maxId;
+          } else {
+            maxId = Math.max(maxId, Number(copy.id));
+          }
+          if (![1, 2, 3].includes(Number(copy.term))) copy.term = getDefaultTerm();
+          existing.push(copy);
+          added++;
+        });
+      });
+      current.nextId = Math.max(Number(current.nextId) || 1, Number(imported.nextId) || 1, maxId + 1);
+      saveMarkitData(current);
+      setToolMessage(importMessage, 'Импорт завершён. Добавлено оценок: ' + added + '.', 'success');
+    } catch (error) {
+      setToolMessage(importMessage, 'Не удалось сохранить импортированные оценки. Проверьте доступность хранилища.', 'error');
+      console.error('MarkIt: ошибка импорта.', error);
+    }
+  });
+
   function updateTermButtons() {
     termSeg.querySelectorAll('button[data-term]').forEach(function (button) {
       button.setAttribute('aria-checked', String(Number(button.dataset.term) === selectedTerm));
@@ -1935,6 +2186,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     const button = event.target.closest('button[data-term]');
     if (!button) return;
     selectedTerm = Number(button.dataset.term);
+    gradeTermInput.value = String(selectedTerm === 0 ? getDefaultTerm() : selectedTerm);
     updateTermButtons();
     renderCalc(selectedTerm);
   });
@@ -2042,6 +2294,13 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
   });
 
   updateTermButtons();
+  try {
+    const initialData = readMarkitData();
+    updateSubjectOptions(initialData);
+    gradeTermInput.value = String(selectedTerm === 0 ? getDefaultTerm() : selectedTerm);
+  } catch (error) {
+    console.warn('MarkIt: не удалось подготовить форму оценок.', error);
+  }
 })();
 </script>
 
@@ -2063,7 +2322,7 @@ html.a-theme *,html.a-theme *::before,html.a-theme *::after{transition:backgroun
     'Добавьте уроки, кружки и домашку — получите коэффициент сложности дня.':'Add lessons, activities, and homework to calculate your day’s difficulty score.',
     'Настройки':'Settings','Оценки':'Grades','Период оценок':'Grade period','Год':'Year',
     'Нет оценок за выбранный период.':'No grades for the selected period.','Не удалось прочитать данные MarkIt.':'Could not read MarkIt data.',
-    'Добавить дело':'Add task','День':'Day','Очистить день':'Clear day',
+    '＋ Добавить оценку':'＋ Add grade','⇧ Импорт оценок из MarkIt':'⇧ Import grades from MarkIt','Предмет':'Subject','Оценка':'Grade','Вес':'Weight','Триместр':'Term','1 триместр':'Term 1','2 триместр':'Term 2','3 триместр':'Term 3','Сохранить оценку':'Save grade','Файл резервной копии (необязательно)':'Backup file (optional)','Данные MarkIt':'MarkIt data','Импортировать оценки':'Import grades','Например, Математика':'e.g. Mathematics','Вставьте сюда текст копии MarkIt':'Paste the MarkIt backup text here','В MarkIt нажмите «Копия», затем вставьте сюда весь скопированный JSON. Импорт объединит данные и не удалит существующие оценки.':'In MarkIt, tap “Copy”, then paste the full JSON here. Import merges data and keeps existing grades.','Введите название предмета.':'Enter a subject name.','Выберите оценку от 2 до 5.':'Choose a grade from 2 to 5.','Вес должен быть числом больше нуля и не больше 100.':'Weight must be greater than 0 and no more than 100.','Оценка сохранена.':'Grade saved.','Не удалось сохранить оценку. Возможно, хранилище недоступно.':'Could not save the grade. Storage may be unavailable.','Файл загружен. Нажмите «Импортировать оценки».':'File loaded. Tap “Import grades”.','Не удалось прочитать файл.':'Could not read the file.','Не удалось прочитать копию MarkIt. Вставьте полный JSON из кнопки «Копия».':'Could not read the MarkIt backup. Paste the full JSON from the “Copy” button.','Список оценок предмета повреждён.':'A subject grade list is invalid.','В файле не найден список предметов.':'No subject list found in the file.','В копии есть оценка с неверным форматом.':'The backup contains an invalid grade.','Импорт завершён. Добавлено оценок: ':'Import complete. Grades added: ','Не удалось сохранить импортированные оценки. Проверьте доступность хранилища.':'Could not save imported grades. Check storage availability.','Добавить дело':'Add task','День':'Day','Очистить день':'Clear day',
     'В этом дне пока ничего нет. Нажмите «Добавить дело».':'Nothing planned for this day yet. Tap “Add task”.',
     'Заполнить примером недели':'Fill with sample week','Круговая диаграмма нагрузки дня':'Daily workload pie chart',
     'коэффициент дня из 10':'Daily score out of 10','часов занято':'hours scheduled','средняя сложность':'average difficulty',
