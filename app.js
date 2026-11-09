@@ -194,6 +194,19 @@
     try { const t = '__test'; localStorage.setItem(t, '1'); localStorage.removeItem(t); return true; }
     catch (e) { return false; }
   }
+  // Уроки с указанным временем всегда идут по возрастанию времени начала.
+  // Остальные дела сохраняют относительный порядок после уроков.
+  function sortDayItems(items) {
+    items.sort((a, b) => {
+      const at = a && a.t === 'Урок' && TIME_RE.test(a.startTime || '');
+      const bt = b && b.t === 'Урок' && TIME_RE.test(b.startTime || '');
+      if (at && bt) return toMin(a.startTime) - toMin(b.startTime);
+      if (at !== bt) return at ? -1 : 1;
+      return 0;
+    });
+    return items;
+  }
+
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify({ days })); storageOk = true; }
     catch (e) { storageOk = false; }
@@ -598,6 +611,7 @@
 
     const added = nameEl.value.trim() || t;
     days[sel].push({ t, n: added, d: Number(diffEl.value), m, ...lessonData });
+    sortDayItems(days[sel]);
     save();
     errorEl.textContent = '';
     nameEl.value = '';
@@ -790,6 +804,7 @@
     });
     if (!ok) return say('Не нашёл подходящих строк. Нужны столбцы: День; Тип; Название; Сложность (1–10); Минуты (5–600).', false);
     if ($('replace').checked) days = fresh; else fresh.forEach((a, i) => days[i].push(...a));
+    days.forEach(sortDayItems);
     save();
     render();
     say('Импортировано записей: ' + ok + (skipped ? ', пропущено строк с ошибками: ' + skipped : '') + '.', true);
@@ -816,6 +831,43 @@
     const t = $('paste').value.trim();
     if (!t) return say('Вставьте текст CSV в поле выше.', false);
     importText(t);
+  });
+
+  // Полная JSON-копия расписания (CSV остаётся для совместимости).
+  const scheduleJson = $('scheduleJson'), jsonMsg = $('jsonMsg');
+  $('exportJson').addEventListener('click', () => {
+    scheduleJson.value = JSON.stringify({ format: 'planner-schedule', version: 1, exportedAt: new Date().toISOString(), days }, null, 2);
+    scheduleJson.focus(); scheduleJson.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    jsonMsg.textContent = 'JSON-копия создана. Если не скопировалась автоматически, скопируйте текст вручную.';
+    jsonMsg.className = 'io-msg ok';
+  });
+  $('importJson').addEventListener('click', () => {
+    try {
+      const data = JSON.parse(scheduleJson.value.trim());
+      if (!data || !Array.isArray(data.days) || data.days.length !== 7) throw new Error('Неверная структура недели.');
+      const next = data.days.map(day => {
+        if (!Array.isArray(day)) throw new Error('Один из дней повреждён.');
+        return day.map(item => {
+          if (!item || !['Урок', 'Кружок', 'Домашка'].includes(item.t) || typeof item.n !== 'string' ||
+              !Number.isInteger(Number(item.d)) || Number(item.d) < 1 || Number(item.d) > 10 ||
+              !Number.isInteger(Number(item.m)) || Number(item.m) < 5 || Number(item.m) > 600) throw new Error('Найдена некорректная запись.');
+          const copy = { t: item.t, n: item.n.slice(0, 80), d: Number(item.d), m: Number(item.m) };
+          if (item.t === 'Урок' && TIME_RE.test(item.startTime || '')) {
+            copy.startTime = item.startTime;
+            if (TIME_RE.test(item.endTime || '')) copy.endTime = item.endTime;
+          }
+          return copy;
+        });
+      });
+      if (!window.confirm('Заменить текущее расписание данными из JSON-копии?')) return;
+      days = next; days.forEach(sortDayItems); save(); render();
+      jsonMsg.textContent = 'Расписание восстановлено. Записей: ' + days.reduce((n, d) => n + d.length, 0) + '.';
+      jsonMsg.className = 'io-msg ok';
+    } catch (error) {
+      jsonMsg.textContent = 'Не удалось восстановить JSON: ' + (error.message || 'проверьте текст копии.');
+      jsonMsg.className = 'io-msg err';
+    }
   });
 
   // Новый день: если страница осталась открытой за полночь (или вкладку открыли снова), переходим на сегодняшний день
