@@ -195,6 +195,13 @@
       </div>
       <p id="ioMsg" class="io-msg" role="status"></p>
       <details class="paste">
+        <summary>Резервная копия JSON</summary>
+        <p class="set-help">Полная копия расписания, включая время уроков. Скопируйте текст, чтобы перенести данные на другое устройство.</p>
+        <textarea id="scheduleJson" rows="5" placeholder="Здесь появится JSON-копия"></textarea>
+        <div class="io"><button type="button" id="exportJson" class="btn ghost">Создать копию</button><button type="button" id="importJson" class="btn ghost">Восстановить из JSON</button></div>
+        <p id="jsonMsg" class="io-msg" role="status"></p>
+      </details>
+      <details class="paste">
         <summary>Вставить CSV текстом</summary>
         <textarea id="paste" rows="5" placeholder="День;Тип;Название;Сложность;Минуты&#10;Пн;Урок;Математика;7;45"></textarea>
         <button type="button" id="pasteGo" class="btn ghost">Импортировать текст</button>
